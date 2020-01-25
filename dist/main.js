@@ -15,21 +15,6 @@
 (function () {
     'use strict';
 
-    /*! *****************************************************************************
-    Copyright (c) Microsoft Corporation. All rights reserved.
-    Licensed under the Apache License, Version 2.0 (the "License"); you may not use
-    this file except in compliance with the License. You may obtain a copy of the
-    License at http://www.apache.org/licenses/LICENSE-2.0
-
-    THIS CODE IS PROVIDED ON AN *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
-    WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
-    MERCHANTABLITY OR NON-INFRINGEMENT.
-
-    See the Apache Version 2.0 License for specific language governing permissions
-    and limitations under the License.
-    ***************************************************************************** */
-
     function __awaiter(thisArg, _arguments, P, generator) {
         return new (P || (P = Promise))(function (resolve, reject) {
             function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -2049,7 +2034,7 @@
       this.domain = null;
       if (EventEmitter.usingDomains) {
         // if there is an active domain, then attach to it.
-        if (domain.active && !(this instanceof domain.Domain)) ;
+        if (domain.active ) ;
       }
 
       if (!this._events || this._events === Object.getPrototypeOf(this)._events) {
@@ -3131,1766 +3116,6 @@
       return Object.prototype.hasOwnProperty.call(obj, prop);
     }
 
-    var INSPECT_MAX_BYTES$1 = 50;
-
-    /**
-     * If `Buffer.TYPED_ARRAY_SUPPORT`:
-     *   === true    Use Uint8Array implementation (fastest)
-     *   === false   Use Object implementation (most compatible, even IE6)
-     *
-     * Browsers that support typed arrays are IE 10+, Firefox 4+, Chrome 7+, Safari 5.1+,
-     * Opera 11.6+, iOS 4.2+.
-     *
-     * Due to various browser bugs, sometimes the Object implementation will be used even
-     * when the browser supports typed arrays.
-     *
-     * Note:
-     *
-     *   - Firefox 4-29 lacks support for adding new properties to `Uint8Array` instances,
-     *     See: https://bugzilla.mozilla.org/show_bug.cgi?id=695438.
-     *
-     *   - Chrome 9-10 is missing the `TypedArray.prototype.subarray` function.
-     *
-     *   - IE10 has a broken `TypedArray.prototype.subarray` function which returns arrays of
-     *     incorrect length in some situations.
-
-     * We detect these buggy browsers and set `Buffer.TYPED_ARRAY_SUPPORT` to `false` so they
-     * get the Object implementation, which is slower but behaves correctly.
-     */
-    Buffer$1.TYPED_ARRAY_SUPPORT = global$1.TYPED_ARRAY_SUPPORT !== undefined
-      ? global$1.TYPED_ARRAY_SUPPORT
-      : true;
-
-    function kMaxLength$1 () {
-      return Buffer$1.TYPED_ARRAY_SUPPORT
-        ? 0x7fffffff
-        : 0x3fffffff
-    }
-
-    function createBuffer$1 (that, length) {
-      if (kMaxLength$1() < length) {
-        throw new RangeError('Invalid typed array length')
-      }
-      if (Buffer$1.TYPED_ARRAY_SUPPORT) {
-        // Return an augmented `Uint8Array` instance, for best performance
-        that = new Uint8Array(length);
-        that.__proto__ = Buffer$1.prototype;
-      } else {
-        // Fallback: Return an object instance of the Buffer class
-        if (that === null) {
-          that = new Buffer$1(length);
-        }
-        that.length = length;
-      }
-
-      return that
-    }
-
-    /**
-     * The Buffer constructor returns instances of `Uint8Array` that have their
-     * prototype changed to `Buffer.prototype`. Furthermore, `Buffer` is a subclass of
-     * `Uint8Array`, so the returned instances will have all the node `Buffer` methods
-     * and the `Uint8Array` methods. Square bracket notation works as expected -- it
-     * returns a single octet.
-     *
-     * The `Uint8Array` prototype remains unmodified.
-     */
-
-    function Buffer$1 (arg, encodingOrOffset, length) {
-      if (!Buffer$1.TYPED_ARRAY_SUPPORT && !(this instanceof Buffer$1)) {
-        return new Buffer$1(arg, encodingOrOffset, length)
-      }
-
-      // Common case.
-      if (typeof arg === 'number') {
-        if (typeof encodingOrOffset === 'string') {
-          throw new Error(
-            'If encoding is specified then the first argument must be a string'
-          )
-        }
-        return allocUnsafe$1(this, arg)
-      }
-      return from$1(this, arg, encodingOrOffset, length)
-    }
-
-    Buffer$1.poolSize = 8192; // not used by this implementation
-
-    // TODO: Legacy, not needed anymore. Remove in next major version.
-    Buffer$1._augment = function (arr) {
-      arr.__proto__ = Buffer$1.prototype;
-      return arr
-    };
-
-    function from$1 (that, value, encodingOrOffset, length) {
-      if (typeof value === 'number') {
-        throw new TypeError('"value" argument must not be a number')
-      }
-
-      if (typeof ArrayBuffer !== 'undefined' && value instanceof ArrayBuffer) {
-        return fromArrayBuffer$1(that, value, encodingOrOffset, length)
-      }
-
-      if (typeof value === 'string') {
-        return fromString$1(that, value, encodingOrOffset)
-      }
-
-      return fromObject$1(that, value)
-    }
-
-    /**
-     * Functionally equivalent to Buffer(arg, encoding) but throws a TypeError
-     * if value is a number.
-     * Buffer.from(str[, encoding])
-     * Buffer.from(array)
-     * Buffer.from(buffer)
-     * Buffer.from(arrayBuffer[, byteOffset[, length]])
-     **/
-    Buffer$1.from = function (value, encodingOrOffset, length) {
-      return from$1(null, value, encodingOrOffset, length)
-    };
-
-    if (Buffer$1.TYPED_ARRAY_SUPPORT) {
-      Buffer$1.prototype.__proto__ = Uint8Array.prototype;
-      Buffer$1.__proto__ = Uint8Array;
-    }
-
-    function assertSize$1 (size) {
-      if (typeof size !== 'number') {
-        throw new TypeError('"size" argument must be a number')
-      } else if (size < 0) {
-        throw new RangeError('"size" argument must not be negative')
-      }
-    }
-
-    function alloc$1 (that, size, fill, encoding) {
-      assertSize$1(size);
-      if (size <= 0) {
-        return createBuffer$1(that, size)
-      }
-      if (fill !== undefined) {
-        // Only pay attention to encoding if it's a string. This
-        // prevents accidentally sending in a number that would
-        // be interpretted as a start offset.
-        return typeof encoding === 'string'
-          ? createBuffer$1(that, size).fill(fill, encoding)
-          : createBuffer$1(that, size).fill(fill)
-      }
-      return createBuffer$1(that, size)
-    }
-
-    /**
-     * Creates a new filled Buffer instance.
-     * alloc(size[, fill[, encoding]])
-     **/
-    Buffer$1.alloc = function (size, fill, encoding) {
-      return alloc$1(null, size, fill, encoding)
-    };
-
-    function allocUnsafe$1 (that, size) {
-      assertSize$1(size);
-      that = createBuffer$1(that, size < 0 ? 0 : checked$1(size) | 0);
-      if (!Buffer$1.TYPED_ARRAY_SUPPORT) {
-        for (var i = 0; i < size; ++i) {
-          that[i] = 0;
-        }
-      }
-      return that
-    }
-
-    /**
-     * Equivalent to Buffer(num), by default creates a non-zero-filled Buffer instance.
-     * */
-    Buffer$1.allocUnsafe = function (size) {
-      return allocUnsafe$1(null, size)
-    };
-    /**
-     * Equivalent to SlowBuffer(num), by default creates a non-zero-filled Buffer instance.
-     */
-    Buffer$1.allocUnsafeSlow = function (size) {
-      return allocUnsafe$1(null, size)
-    };
-
-    function fromString$1 (that, string, encoding) {
-      if (typeof encoding !== 'string' || encoding === '') {
-        encoding = 'utf8';
-      }
-
-      if (!Buffer$1.isEncoding(encoding)) {
-        throw new TypeError('"encoding" must be a valid string encoding')
-      }
-
-      var length = byteLength$1(string, encoding) | 0;
-      that = createBuffer$1(that, length);
-
-      var actual = that.write(string, encoding);
-
-      if (actual !== length) {
-        // Writing a hex string, for example, that contains invalid characters will
-        // cause everything after the first invalid character to be ignored. (e.g.
-        // 'abxxcd' will be treated as 'ab')
-        that = that.slice(0, actual);
-      }
-
-      return that
-    }
-
-    function fromArrayLike$1 (that, array) {
-      var length = array.length < 0 ? 0 : checked$1(array.length) | 0;
-      that = createBuffer$1(that, length);
-      for (var i = 0; i < length; i += 1) {
-        that[i] = array[i] & 255;
-      }
-      return that
-    }
-
-    function fromArrayBuffer$1 (that, array, byteOffset, length) {
-      array.byteLength; // this throws if `array` is not a valid ArrayBuffer
-
-      if (byteOffset < 0 || array.byteLength < byteOffset) {
-        throw new RangeError('\'offset\' is out of bounds')
-      }
-
-      if (array.byteLength < byteOffset + (length || 0)) {
-        throw new RangeError('\'length\' is out of bounds')
-      }
-
-      if (byteOffset === undefined && length === undefined) {
-        array = new Uint8Array(array);
-      } else if (length === undefined) {
-        array = new Uint8Array(array, byteOffset);
-      } else {
-        array = new Uint8Array(array, byteOffset, length);
-      }
-
-      if (Buffer$1.TYPED_ARRAY_SUPPORT) {
-        // Return an augmented `Uint8Array` instance, for best performance
-        that = array;
-        that.__proto__ = Buffer$1.prototype;
-      } else {
-        // Fallback: Return an object instance of the Buffer class
-        that = fromArrayLike$1(that, array);
-      }
-      return that
-    }
-
-    function fromObject$1 (that, obj) {
-      if (internalIsBuffer$1(obj)) {
-        var len = checked$1(obj.length) | 0;
-        that = createBuffer$1(that, len);
-
-        if (that.length === 0) {
-          return that
-        }
-
-        obj.copy(that, 0, 0, len);
-        return that
-      }
-
-      if (obj) {
-        if ((typeof ArrayBuffer !== 'undefined' &&
-            obj.buffer instanceof ArrayBuffer) || 'length' in obj) {
-          if (typeof obj.length !== 'number' || isnan$1(obj.length)) {
-            return createBuffer$1(that, 0)
-          }
-          return fromArrayLike$1(that, obj)
-        }
-
-        if (obj.type === 'Buffer' && isArray(obj.data)) {
-          return fromArrayLike$1(that, obj.data)
-        }
-      }
-
-      throw new TypeError('First argument must be a string, Buffer, ArrayBuffer, Array, or array-like object.')
-    }
-
-    function checked$1 (length) {
-      // Note: cannot use `length < kMaxLength()` here because that fails when
-      // length is NaN (which is otherwise coerced to zero.)
-      if (length >= kMaxLength$1()) {
-        throw new RangeError('Attempt to allocate Buffer larger than maximum ' +
-                             'size: 0x' + kMaxLength$1().toString(16) + ' bytes')
-      }
-      return length | 0
-    }
-    Buffer$1.isBuffer = isBuffer$1;
-    function internalIsBuffer$1 (b) {
-      return !!(b != null && b._isBuffer)
-    }
-
-    Buffer$1.compare = function compare (a, b) {
-      if (!internalIsBuffer$1(a) || !internalIsBuffer$1(b)) {
-        throw new TypeError('Arguments must be Buffers')
-      }
-
-      if (a === b) return 0
-
-      var x = a.length;
-      var y = b.length;
-
-      for (var i = 0, len = Math.min(x, y); i < len; ++i) {
-        if (a[i] !== b[i]) {
-          x = a[i];
-          y = b[i];
-          break
-        }
-      }
-
-      if (x < y) return -1
-      if (y < x) return 1
-      return 0
-    };
-
-    Buffer$1.isEncoding = function isEncoding (encoding) {
-      switch (String(encoding).toLowerCase()) {
-        case 'hex':
-        case 'utf8':
-        case 'utf-8':
-        case 'ascii':
-        case 'latin1':
-        case 'binary':
-        case 'base64':
-        case 'ucs2':
-        case 'ucs-2':
-        case 'utf16le':
-        case 'utf-16le':
-          return true
-        default:
-          return false
-      }
-    };
-
-    Buffer$1.concat = function concat (list, length) {
-      if (!isArray(list)) {
-        throw new TypeError('"list" argument must be an Array of Buffers')
-      }
-
-      if (list.length === 0) {
-        return Buffer$1.alloc(0)
-      }
-
-      var i;
-      if (length === undefined) {
-        length = 0;
-        for (i = 0; i < list.length; ++i) {
-          length += list[i].length;
-        }
-      }
-
-      var buffer = Buffer$1.allocUnsafe(length);
-      var pos = 0;
-      for (i = 0; i < list.length; ++i) {
-        var buf = list[i];
-        if (!internalIsBuffer$1(buf)) {
-          throw new TypeError('"list" argument must be an Array of Buffers')
-        }
-        buf.copy(buffer, pos);
-        pos += buf.length;
-      }
-      return buffer
-    };
-
-    function byteLength$1 (string, encoding) {
-      if (internalIsBuffer$1(string)) {
-        return string.length
-      }
-      if (typeof ArrayBuffer !== 'undefined' && typeof ArrayBuffer.isView === 'function' &&
-          (ArrayBuffer.isView(string) || string instanceof ArrayBuffer)) {
-        return string.byteLength
-      }
-      if (typeof string !== 'string') {
-        string = '' + string;
-      }
-
-      var len = string.length;
-      if (len === 0) return 0
-
-      // Use a for loop to avoid recursion
-      var loweredCase = false;
-      for (;;) {
-        switch (encoding) {
-          case 'ascii':
-          case 'latin1':
-          case 'binary':
-            return len
-          case 'utf8':
-          case 'utf-8':
-          case undefined:
-            return utf8ToBytes$1(string).length
-          case 'ucs2':
-          case 'ucs-2':
-          case 'utf16le':
-          case 'utf-16le':
-            return len * 2
-          case 'hex':
-            return len >>> 1
-          case 'base64':
-            return base64ToBytes$1(string).length
-          default:
-            if (loweredCase) return utf8ToBytes$1(string).length // assume utf8
-            encoding = ('' + encoding).toLowerCase();
-            loweredCase = true;
-        }
-      }
-    }
-    Buffer$1.byteLength = byteLength$1;
-
-    function slowToString$1 (encoding, start, end) {
-      var loweredCase = false;
-
-      // No need to verify that "this.length <= MAX_UINT32" since it's a read-only
-      // property of a typed array.
-
-      // This behaves neither like String nor Uint8Array in that we set start/end
-      // to their upper/lower bounds if the value passed is out of range.
-      // undefined is handled specially as per ECMA-262 6th Edition,
-      // Section 13.3.3.7 Runtime Semantics: KeyedBindingInitialization.
-      if (start === undefined || start < 0) {
-        start = 0;
-      }
-      // Return early if start > this.length. Done here to prevent potential uint32
-      // coercion fail below.
-      if (start > this.length) {
-        return ''
-      }
-
-      if (end === undefined || end > this.length) {
-        end = this.length;
-      }
-
-      if (end <= 0) {
-        return ''
-      }
-
-      // Force coersion to uint32. This will also coerce falsey/NaN values to 0.
-      end >>>= 0;
-      start >>>= 0;
-
-      if (end <= start) {
-        return ''
-      }
-
-      if (!encoding) encoding = 'utf8';
-
-      while (true) {
-        switch (encoding) {
-          case 'hex':
-            return hexSlice$1(this, start, end)
-
-          case 'utf8':
-          case 'utf-8':
-            return utf8Slice$1(this, start, end)
-
-          case 'ascii':
-            return asciiSlice$1(this, start, end)
-
-          case 'latin1':
-          case 'binary':
-            return latin1Slice$1(this, start, end)
-
-          case 'base64':
-            return base64Slice$1(this, start, end)
-
-          case 'ucs2':
-          case 'ucs-2':
-          case 'utf16le':
-          case 'utf-16le':
-            return utf16leSlice$1(this, start, end)
-
-          default:
-            if (loweredCase) throw new TypeError('Unknown encoding: ' + encoding)
-            encoding = (encoding + '').toLowerCase();
-            loweredCase = true;
-        }
-      }
-    }
-
-    // The property is used by `Buffer.isBuffer` and `is-buffer` (in Safari 5-7) to detect
-    // Buffer instances.
-    Buffer$1.prototype._isBuffer = true;
-
-    function swap$1 (b, n, m) {
-      var i = b[n];
-      b[n] = b[m];
-      b[m] = i;
-    }
-
-    Buffer$1.prototype.swap16 = function swap16 () {
-      var len = this.length;
-      if (len % 2 !== 0) {
-        throw new RangeError('Buffer size must be a multiple of 16-bits')
-      }
-      for (var i = 0; i < len; i += 2) {
-        swap$1(this, i, i + 1);
-      }
-      return this
-    };
-
-    Buffer$1.prototype.swap32 = function swap32 () {
-      var len = this.length;
-      if (len % 4 !== 0) {
-        throw new RangeError('Buffer size must be a multiple of 32-bits')
-      }
-      for (var i = 0; i < len; i += 4) {
-        swap$1(this, i, i + 3);
-        swap$1(this, i + 1, i + 2);
-      }
-      return this
-    };
-
-    Buffer$1.prototype.swap64 = function swap64 () {
-      var len = this.length;
-      if (len % 8 !== 0) {
-        throw new RangeError('Buffer size must be a multiple of 64-bits')
-      }
-      for (var i = 0; i < len; i += 8) {
-        swap$1(this, i, i + 7);
-        swap$1(this, i + 1, i + 6);
-        swap$1(this, i + 2, i + 5);
-        swap$1(this, i + 3, i + 4);
-      }
-      return this
-    };
-
-    Buffer$1.prototype.toString = function toString () {
-      var length = this.length | 0;
-      if (length === 0) return ''
-      if (arguments.length === 0) return utf8Slice$1(this, 0, length)
-      return slowToString$1.apply(this, arguments)
-    };
-
-    Buffer$1.prototype.equals = function equals (b) {
-      if (!internalIsBuffer$1(b)) throw new TypeError('Argument must be a Buffer')
-      if (this === b) return true
-      return Buffer$1.compare(this, b) === 0
-    };
-
-    Buffer$1.prototype.inspect = function inspect () {
-      var str = '';
-      var max = INSPECT_MAX_BYTES$1;
-      if (this.length > 0) {
-        str = this.toString('hex', 0, max).match(/.{2}/g).join(' ');
-        if (this.length > max) str += ' ... ';
-      }
-      return '<Buffer ' + str + '>'
-    };
-
-    Buffer$1.prototype.compare = function compare (target, start, end, thisStart, thisEnd) {
-      if (!internalIsBuffer$1(target)) {
-        throw new TypeError('Argument must be a Buffer')
-      }
-
-      if (start === undefined) {
-        start = 0;
-      }
-      if (end === undefined) {
-        end = target ? target.length : 0;
-      }
-      if (thisStart === undefined) {
-        thisStart = 0;
-      }
-      if (thisEnd === undefined) {
-        thisEnd = this.length;
-      }
-
-      if (start < 0 || end > target.length || thisStart < 0 || thisEnd > this.length) {
-        throw new RangeError('out of range index')
-      }
-
-      if (thisStart >= thisEnd && start >= end) {
-        return 0
-      }
-      if (thisStart >= thisEnd) {
-        return -1
-      }
-      if (start >= end) {
-        return 1
-      }
-
-      start >>>= 0;
-      end >>>= 0;
-      thisStart >>>= 0;
-      thisEnd >>>= 0;
-
-      if (this === target) return 0
-
-      var x = thisEnd - thisStart;
-      var y = end - start;
-      var len = Math.min(x, y);
-
-      var thisCopy = this.slice(thisStart, thisEnd);
-      var targetCopy = target.slice(start, end);
-
-      for (var i = 0; i < len; ++i) {
-        if (thisCopy[i] !== targetCopy[i]) {
-          x = thisCopy[i];
-          y = targetCopy[i];
-          break
-        }
-      }
-
-      if (x < y) return -1
-      if (y < x) return 1
-      return 0
-    };
-
-    // Finds either the first index of `val` in `buffer` at offset >= `byteOffset`,
-    // OR the last index of `val` in `buffer` at offset <= `byteOffset`.
-    //
-    // Arguments:
-    // - buffer - a Buffer to search
-    // - val - a string, Buffer, or number
-    // - byteOffset - an index into `buffer`; will be clamped to an int32
-    // - encoding - an optional encoding, relevant is val is a string
-    // - dir - true for indexOf, false for lastIndexOf
-    function bidirectionalIndexOf$1 (buffer, val, byteOffset, encoding, dir) {
-      // Empty buffer means no match
-      if (buffer.length === 0) return -1
-
-      // Normalize byteOffset
-      if (typeof byteOffset === 'string') {
-        encoding = byteOffset;
-        byteOffset = 0;
-      } else if (byteOffset > 0x7fffffff) {
-        byteOffset = 0x7fffffff;
-      } else if (byteOffset < -0x80000000) {
-        byteOffset = -0x80000000;
-      }
-      byteOffset = +byteOffset;  // Coerce to Number.
-      if (isNaN(byteOffset)) {
-        // byteOffset: it it's undefined, null, NaN, "foo", etc, search whole buffer
-        byteOffset = dir ? 0 : (buffer.length - 1);
-      }
-
-      // Normalize byteOffset: negative offsets start from the end of the buffer
-      if (byteOffset < 0) byteOffset = buffer.length + byteOffset;
-      if (byteOffset >= buffer.length) {
-        if (dir) return -1
-        else byteOffset = buffer.length - 1;
-      } else if (byteOffset < 0) {
-        if (dir) byteOffset = 0;
-        else return -1
-      }
-
-      // Normalize val
-      if (typeof val === 'string') {
-        val = Buffer$1.from(val, encoding);
-      }
-
-      // Finally, search either indexOf (if dir is true) or lastIndexOf
-      if (internalIsBuffer$1(val)) {
-        // Special case: looking for empty string/buffer always fails
-        if (val.length === 0) {
-          return -1
-        }
-        return arrayIndexOf$1(buffer, val, byteOffset, encoding, dir)
-      } else if (typeof val === 'number') {
-        val = val & 0xFF; // Search for a byte value [0-255]
-        if (Buffer$1.TYPED_ARRAY_SUPPORT &&
-            typeof Uint8Array.prototype.indexOf === 'function') {
-          if (dir) {
-            return Uint8Array.prototype.indexOf.call(buffer, val, byteOffset)
-          } else {
-            return Uint8Array.prototype.lastIndexOf.call(buffer, val, byteOffset)
-          }
-        }
-        return arrayIndexOf$1(buffer, [ val ], byteOffset, encoding, dir)
-      }
-
-      throw new TypeError('val must be string, number or Buffer')
-    }
-
-    function arrayIndexOf$1 (arr, val, byteOffset, encoding, dir) {
-      var indexSize = 1;
-      var arrLength = arr.length;
-      var valLength = val.length;
-
-      if (encoding !== undefined) {
-        encoding = String(encoding).toLowerCase();
-        if (encoding === 'ucs2' || encoding === 'ucs-2' ||
-            encoding === 'utf16le' || encoding === 'utf-16le') {
-          if (arr.length < 2 || val.length < 2) {
-            return -1
-          }
-          indexSize = 2;
-          arrLength /= 2;
-          valLength /= 2;
-          byteOffset /= 2;
-        }
-      }
-
-      function read (buf, i) {
-        if (indexSize === 1) {
-          return buf[i]
-        } else {
-          return buf.readUInt16BE(i * indexSize)
-        }
-      }
-
-      var i;
-      if (dir) {
-        var foundIndex = -1;
-        for (i = byteOffset; i < arrLength; i++) {
-          if (read(arr, i) === read(val, foundIndex === -1 ? 0 : i - foundIndex)) {
-            if (foundIndex === -1) foundIndex = i;
-            if (i - foundIndex + 1 === valLength) return foundIndex * indexSize
-          } else {
-            if (foundIndex !== -1) i -= i - foundIndex;
-            foundIndex = -1;
-          }
-        }
-      } else {
-        if (byteOffset + valLength > arrLength) byteOffset = arrLength - valLength;
-        for (i = byteOffset; i >= 0; i--) {
-          var found = true;
-          for (var j = 0; j < valLength; j++) {
-            if (read(arr, i + j) !== read(val, j)) {
-              found = false;
-              break
-            }
-          }
-          if (found) return i
-        }
-      }
-
-      return -1
-    }
-
-    Buffer$1.prototype.includes = function includes (val, byteOffset, encoding) {
-      return this.indexOf(val, byteOffset, encoding) !== -1
-    };
-
-    Buffer$1.prototype.indexOf = function indexOf (val, byteOffset, encoding) {
-      return bidirectionalIndexOf$1(this, val, byteOffset, encoding, true)
-    };
-
-    Buffer$1.prototype.lastIndexOf = function lastIndexOf (val, byteOffset, encoding) {
-      return bidirectionalIndexOf$1(this, val, byteOffset, encoding, false)
-    };
-
-    function hexWrite$1 (buf, string, offset, length) {
-      offset = Number(offset) || 0;
-      var remaining = buf.length - offset;
-      if (!length) {
-        length = remaining;
-      } else {
-        length = Number(length);
-        if (length > remaining) {
-          length = remaining;
-        }
-      }
-
-      // must be an even number of digits
-      var strLen = string.length;
-      if (strLen % 2 !== 0) throw new TypeError('Invalid hex string')
-
-      if (length > strLen / 2) {
-        length = strLen / 2;
-      }
-      for (var i = 0; i < length; ++i) {
-        var parsed = parseInt(string.substr(i * 2, 2), 16);
-        if (isNaN(parsed)) return i
-        buf[offset + i] = parsed;
-      }
-      return i
-    }
-
-    function utf8Write$1 (buf, string, offset, length) {
-      return blitBuffer$1(utf8ToBytes$1(string, buf.length - offset), buf, offset, length)
-    }
-
-    function asciiWrite$1 (buf, string, offset, length) {
-      return blitBuffer$1(asciiToBytes$1(string), buf, offset, length)
-    }
-
-    function latin1Write$1 (buf, string, offset, length) {
-      return asciiWrite$1(buf, string, offset, length)
-    }
-
-    function base64Write$1 (buf, string, offset, length) {
-      return blitBuffer$1(base64ToBytes$1(string), buf, offset, length)
-    }
-
-    function ucs2Write$1 (buf, string, offset, length) {
-      return blitBuffer$1(utf16leToBytes$1(string, buf.length - offset), buf, offset, length)
-    }
-
-    Buffer$1.prototype.write = function write (string, offset, length, encoding) {
-      // Buffer#write(string)
-      if (offset === undefined) {
-        encoding = 'utf8';
-        length = this.length;
-        offset = 0;
-      // Buffer#write(string, encoding)
-      } else if (length === undefined && typeof offset === 'string') {
-        encoding = offset;
-        length = this.length;
-        offset = 0;
-      // Buffer#write(string, offset[, length][, encoding])
-      } else if (isFinite(offset)) {
-        offset = offset | 0;
-        if (isFinite(length)) {
-          length = length | 0;
-          if (encoding === undefined) encoding = 'utf8';
-        } else {
-          encoding = length;
-          length = undefined;
-        }
-      // legacy write(string, encoding, offset, length) - remove in v0.13
-      } else {
-        throw new Error(
-          'Buffer.write(string, encoding, offset[, length]) is no longer supported'
-        )
-      }
-
-      var remaining = this.length - offset;
-      if (length === undefined || length > remaining) length = remaining;
-
-      if ((string.length > 0 && (length < 0 || offset < 0)) || offset > this.length) {
-        throw new RangeError('Attempt to write outside buffer bounds')
-      }
-
-      if (!encoding) encoding = 'utf8';
-
-      var loweredCase = false;
-      for (;;) {
-        switch (encoding) {
-          case 'hex':
-            return hexWrite$1(this, string, offset, length)
-
-          case 'utf8':
-          case 'utf-8':
-            return utf8Write$1(this, string, offset, length)
-
-          case 'ascii':
-            return asciiWrite$1(this, string, offset, length)
-
-          case 'latin1':
-          case 'binary':
-            return latin1Write$1(this, string, offset, length)
-
-          case 'base64':
-            // Warning: maxLength not taken into account in base64Write
-            return base64Write$1(this, string, offset, length)
-
-          case 'ucs2':
-          case 'ucs-2':
-          case 'utf16le':
-          case 'utf-16le':
-            return ucs2Write$1(this, string, offset, length)
-
-          default:
-            if (loweredCase) throw new TypeError('Unknown encoding: ' + encoding)
-            encoding = ('' + encoding).toLowerCase();
-            loweredCase = true;
-        }
-      }
-    };
-
-    Buffer$1.prototype.toJSON = function toJSON () {
-      return {
-        type: 'Buffer',
-        data: Array.prototype.slice.call(this._arr || this, 0)
-      }
-    };
-
-    function base64Slice$1 (buf, start, end) {
-      if (start === 0 && end === buf.length) {
-        return fromByteArray(buf)
-      } else {
-        return fromByteArray(buf.slice(start, end))
-      }
-    }
-
-    function utf8Slice$1 (buf, start, end) {
-      end = Math.min(buf.length, end);
-      var res = [];
-
-      var i = start;
-      while (i < end) {
-        var firstByte = buf[i];
-        var codePoint = null;
-        var bytesPerSequence = (firstByte > 0xEF) ? 4
-          : (firstByte > 0xDF) ? 3
-          : (firstByte > 0xBF) ? 2
-          : 1;
-
-        if (i + bytesPerSequence <= end) {
-          var secondByte, thirdByte, fourthByte, tempCodePoint;
-
-          switch (bytesPerSequence) {
-            case 1:
-              if (firstByte < 0x80) {
-                codePoint = firstByte;
-              }
-              break
-            case 2:
-              secondByte = buf[i + 1];
-              if ((secondByte & 0xC0) === 0x80) {
-                tempCodePoint = (firstByte & 0x1F) << 0x6 | (secondByte & 0x3F);
-                if (tempCodePoint > 0x7F) {
-                  codePoint = tempCodePoint;
-                }
-              }
-              break
-            case 3:
-              secondByte = buf[i + 1];
-              thirdByte = buf[i + 2];
-              if ((secondByte & 0xC0) === 0x80 && (thirdByte & 0xC0) === 0x80) {
-                tempCodePoint = (firstByte & 0xF) << 0xC | (secondByte & 0x3F) << 0x6 | (thirdByte & 0x3F);
-                if (tempCodePoint > 0x7FF && (tempCodePoint < 0xD800 || tempCodePoint > 0xDFFF)) {
-                  codePoint = tempCodePoint;
-                }
-              }
-              break
-            case 4:
-              secondByte = buf[i + 1];
-              thirdByte = buf[i + 2];
-              fourthByte = buf[i + 3];
-              if ((secondByte & 0xC0) === 0x80 && (thirdByte & 0xC0) === 0x80 && (fourthByte & 0xC0) === 0x80) {
-                tempCodePoint = (firstByte & 0xF) << 0x12 | (secondByte & 0x3F) << 0xC | (thirdByte & 0x3F) << 0x6 | (fourthByte & 0x3F);
-                if (tempCodePoint > 0xFFFF && tempCodePoint < 0x110000) {
-                  codePoint = tempCodePoint;
-                }
-              }
-          }
-        }
-
-        if (codePoint === null) {
-          // we did not generate a valid codePoint so insert a
-          // replacement char (U+FFFD) and advance only 1 byte
-          codePoint = 0xFFFD;
-          bytesPerSequence = 1;
-        } else if (codePoint > 0xFFFF) {
-          // encode to utf16 (surrogate pair dance)
-          codePoint -= 0x10000;
-          res.push(codePoint >>> 10 & 0x3FF | 0xD800);
-          codePoint = 0xDC00 | codePoint & 0x3FF;
-        }
-
-        res.push(codePoint);
-        i += bytesPerSequence;
-      }
-
-      return decodeCodePointsArray$1(res)
-    }
-
-    // Based on http://stackoverflow.com/a/22747272/680742, the browser with
-    // the lowest limit is Chrome, with 0x10000 args.
-    // We go 1 magnitude less, for safety
-    var MAX_ARGUMENTS_LENGTH$1 = 0x1000;
-
-    function decodeCodePointsArray$1 (codePoints) {
-      var len = codePoints.length;
-      if (len <= MAX_ARGUMENTS_LENGTH$1) {
-        return String.fromCharCode.apply(String, codePoints) // avoid extra slice()
-      }
-
-      // Decode in chunks to avoid "call stack size exceeded".
-      var res = '';
-      var i = 0;
-      while (i < len) {
-        res += String.fromCharCode.apply(
-          String,
-          codePoints.slice(i, i += MAX_ARGUMENTS_LENGTH$1)
-        );
-      }
-      return res
-    }
-
-    function asciiSlice$1 (buf, start, end) {
-      var ret = '';
-      end = Math.min(buf.length, end);
-
-      for (var i = start; i < end; ++i) {
-        ret += String.fromCharCode(buf[i] & 0x7F);
-      }
-      return ret
-    }
-
-    function latin1Slice$1 (buf, start, end) {
-      var ret = '';
-      end = Math.min(buf.length, end);
-
-      for (var i = start; i < end; ++i) {
-        ret += String.fromCharCode(buf[i]);
-      }
-      return ret
-    }
-
-    function hexSlice$1 (buf, start, end) {
-      var len = buf.length;
-
-      if (!start || start < 0) start = 0;
-      if (!end || end < 0 || end > len) end = len;
-
-      var out = '';
-      for (var i = start; i < end; ++i) {
-        out += toHex$1(buf[i]);
-      }
-      return out
-    }
-
-    function utf16leSlice$1 (buf, start, end) {
-      var bytes = buf.slice(start, end);
-      var res = '';
-      for (var i = 0; i < bytes.length; i += 2) {
-        res += String.fromCharCode(bytes[i] + bytes[i + 1] * 256);
-      }
-      return res
-    }
-
-    Buffer$1.prototype.slice = function slice (start, end) {
-      var len = this.length;
-      start = ~~start;
-      end = end === undefined ? len : ~~end;
-
-      if (start < 0) {
-        start += len;
-        if (start < 0) start = 0;
-      } else if (start > len) {
-        start = len;
-      }
-
-      if (end < 0) {
-        end += len;
-        if (end < 0) end = 0;
-      } else if (end > len) {
-        end = len;
-      }
-
-      if (end < start) end = start;
-
-      var newBuf;
-      if (Buffer$1.TYPED_ARRAY_SUPPORT) {
-        newBuf = this.subarray(start, end);
-        newBuf.__proto__ = Buffer$1.prototype;
-      } else {
-        var sliceLen = end - start;
-        newBuf = new Buffer$1(sliceLen, undefined);
-        for (var i = 0; i < sliceLen; ++i) {
-          newBuf[i] = this[i + start];
-        }
-      }
-
-      return newBuf
-    };
-
-    /*
-     * Need to make sure that buffer isn't trying to write out of bounds.
-     */
-    function checkOffset$1 (offset, ext, length) {
-      if ((offset % 1) !== 0 || offset < 0) throw new RangeError('offset is not uint')
-      if (offset + ext > length) throw new RangeError('Trying to access beyond buffer length')
-    }
-
-    Buffer$1.prototype.readUIntLE = function readUIntLE (offset, byteLength, noAssert) {
-      offset = offset | 0;
-      byteLength = byteLength | 0;
-      if (!noAssert) checkOffset$1(offset, byteLength, this.length);
-
-      var val = this[offset];
-      var mul = 1;
-      var i = 0;
-      while (++i < byteLength && (mul *= 0x100)) {
-        val += this[offset + i] * mul;
-      }
-
-      return val
-    };
-
-    Buffer$1.prototype.readUIntBE = function readUIntBE (offset, byteLength, noAssert) {
-      offset = offset | 0;
-      byteLength = byteLength | 0;
-      if (!noAssert) {
-        checkOffset$1(offset, byteLength, this.length);
-      }
-
-      var val = this[offset + --byteLength];
-      var mul = 1;
-      while (byteLength > 0 && (mul *= 0x100)) {
-        val += this[offset + --byteLength] * mul;
-      }
-
-      return val
-    };
-
-    Buffer$1.prototype.readUInt8 = function readUInt8 (offset, noAssert) {
-      if (!noAssert) checkOffset$1(offset, 1, this.length);
-      return this[offset]
-    };
-
-    Buffer$1.prototype.readUInt16LE = function readUInt16LE (offset, noAssert) {
-      if (!noAssert) checkOffset$1(offset, 2, this.length);
-      return this[offset] | (this[offset + 1] << 8)
-    };
-
-    Buffer$1.prototype.readUInt16BE = function readUInt16BE (offset, noAssert) {
-      if (!noAssert) checkOffset$1(offset, 2, this.length);
-      return (this[offset] << 8) | this[offset + 1]
-    };
-
-    Buffer$1.prototype.readUInt32LE = function readUInt32LE (offset, noAssert) {
-      if (!noAssert) checkOffset$1(offset, 4, this.length);
-
-      return ((this[offset]) |
-          (this[offset + 1] << 8) |
-          (this[offset + 2] << 16)) +
-          (this[offset + 3] * 0x1000000)
-    };
-
-    Buffer$1.prototype.readUInt32BE = function readUInt32BE (offset, noAssert) {
-      if (!noAssert) checkOffset$1(offset, 4, this.length);
-
-      return (this[offset] * 0x1000000) +
-        ((this[offset + 1] << 16) |
-        (this[offset + 2] << 8) |
-        this[offset + 3])
-    };
-
-    Buffer$1.prototype.readIntLE = function readIntLE (offset, byteLength, noAssert) {
-      offset = offset | 0;
-      byteLength = byteLength | 0;
-      if (!noAssert) checkOffset$1(offset, byteLength, this.length);
-
-      var val = this[offset];
-      var mul = 1;
-      var i = 0;
-      while (++i < byteLength && (mul *= 0x100)) {
-        val += this[offset + i] * mul;
-      }
-      mul *= 0x80;
-
-      if (val >= mul) val -= Math.pow(2, 8 * byteLength);
-
-      return val
-    };
-
-    Buffer$1.prototype.readIntBE = function readIntBE (offset, byteLength, noAssert) {
-      offset = offset | 0;
-      byteLength = byteLength | 0;
-      if (!noAssert) checkOffset$1(offset, byteLength, this.length);
-
-      var i = byteLength;
-      var mul = 1;
-      var val = this[offset + --i];
-      while (i > 0 && (mul *= 0x100)) {
-        val += this[offset + --i] * mul;
-      }
-      mul *= 0x80;
-
-      if (val >= mul) val -= Math.pow(2, 8 * byteLength);
-
-      return val
-    };
-
-    Buffer$1.prototype.readInt8 = function readInt8 (offset, noAssert) {
-      if (!noAssert) checkOffset$1(offset, 1, this.length);
-      if (!(this[offset] & 0x80)) return (this[offset])
-      return ((0xff - this[offset] + 1) * -1)
-    };
-
-    Buffer$1.prototype.readInt16LE = function readInt16LE (offset, noAssert) {
-      if (!noAssert) checkOffset$1(offset, 2, this.length);
-      var val = this[offset] | (this[offset + 1] << 8);
-      return (val & 0x8000) ? val | 0xFFFF0000 : val
-    };
-
-    Buffer$1.prototype.readInt16BE = function readInt16BE (offset, noAssert) {
-      if (!noAssert) checkOffset$1(offset, 2, this.length);
-      var val = this[offset + 1] | (this[offset] << 8);
-      return (val & 0x8000) ? val | 0xFFFF0000 : val
-    };
-
-    Buffer$1.prototype.readInt32LE = function readInt32LE (offset, noAssert) {
-      if (!noAssert) checkOffset$1(offset, 4, this.length);
-
-      return (this[offset]) |
-        (this[offset + 1] << 8) |
-        (this[offset + 2] << 16) |
-        (this[offset + 3] << 24)
-    };
-
-    Buffer$1.prototype.readInt32BE = function readInt32BE (offset, noAssert) {
-      if (!noAssert) checkOffset$1(offset, 4, this.length);
-
-      return (this[offset] << 24) |
-        (this[offset + 1] << 16) |
-        (this[offset + 2] << 8) |
-        (this[offset + 3])
-    };
-
-    Buffer$1.prototype.readFloatLE = function readFloatLE (offset, noAssert) {
-      if (!noAssert) checkOffset$1(offset, 4, this.length);
-      return read(this, offset, true, 23, 4)
-    };
-
-    Buffer$1.prototype.readFloatBE = function readFloatBE (offset, noAssert) {
-      if (!noAssert) checkOffset$1(offset, 4, this.length);
-      return read(this, offset, false, 23, 4)
-    };
-
-    Buffer$1.prototype.readDoubleLE = function readDoubleLE (offset, noAssert) {
-      if (!noAssert) checkOffset$1(offset, 8, this.length);
-      return read(this, offset, true, 52, 8)
-    };
-
-    Buffer$1.prototype.readDoubleBE = function readDoubleBE (offset, noAssert) {
-      if (!noAssert) checkOffset$1(offset, 8, this.length);
-      return read(this, offset, false, 52, 8)
-    };
-
-    function checkInt$1 (buf, value, offset, ext, max, min) {
-      if (!internalIsBuffer$1(buf)) throw new TypeError('"buffer" argument must be a Buffer instance')
-      if (value > max || value < min) throw new RangeError('"value" argument is out of bounds')
-      if (offset + ext > buf.length) throw new RangeError('Index out of range')
-    }
-
-    Buffer$1.prototype.writeUIntLE = function writeUIntLE (value, offset, byteLength, noAssert) {
-      value = +value;
-      offset = offset | 0;
-      byteLength = byteLength | 0;
-      if (!noAssert) {
-        var maxBytes = Math.pow(2, 8 * byteLength) - 1;
-        checkInt$1(this, value, offset, byteLength, maxBytes, 0);
-      }
-
-      var mul = 1;
-      var i = 0;
-      this[offset] = value & 0xFF;
-      while (++i < byteLength && (mul *= 0x100)) {
-        this[offset + i] = (value / mul) & 0xFF;
-      }
-
-      return offset + byteLength
-    };
-
-    Buffer$1.prototype.writeUIntBE = function writeUIntBE (value, offset, byteLength, noAssert) {
-      value = +value;
-      offset = offset | 0;
-      byteLength = byteLength | 0;
-      if (!noAssert) {
-        var maxBytes = Math.pow(2, 8 * byteLength) - 1;
-        checkInt$1(this, value, offset, byteLength, maxBytes, 0);
-      }
-
-      var i = byteLength - 1;
-      var mul = 1;
-      this[offset + i] = value & 0xFF;
-      while (--i >= 0 && (mul *= 0x100)) {
-        this[offset + i] = (value / mul) & 0xFF;
-      }
-
-      return offset + byteLength
-    };
-
-    Buffer$1.prototype.writeUInt8 = function writeUInt8 (value, offset, noAssert) {
-      value = +value;
-      offset = offset | 0;
-      if (!noAssert) checkInt$1(this, value, offset, 1, 0xff, 0);
-      if (!Buffer$1.TYPED_ARRAY_SUPPORT) value = Math.floor(value);
-      this[offset] = (value & 0xff);
-      return offset + 1
-    };
-
-    function objectWriteUInt16$1 (buf, value, offset, littleEndian) {
-      if (value < 0) value = 0xffff + value + 1;
-      for (var i = 0, j = Math.min(buf.length - offset, 2); i < j; ++i) {
-        buf[offset + i] = (value & (0xff << (8 * (littleEndian ? i : 1 - i)))) >>>
-          (littleEndian ? i : 1 - i) * 8;
-      }
-    }
-
-    Buffer$1.prototype.writeUInt16LE = function writeUInt16LE (value, offset, noAssert) {
-      value = +value;
-      offset = offset | 0;
-      if (!noAssert) checkInt$1(this, value, offset, 2, 0xffff, 0);
-      if (Buffer$1.TYPED_ARRAY_SUPPORT) {
-        this[offset] = (value & 0xff);
-        this[offset + 1] = (value >>> 8);
-      } else {
-        objectWriteUInt16$1(this, value, offset, true);
-      }
-      return offset + 2
-    };
-
-    Buffer$1.prototype.writeUInt16BE = function writeUInt16BE (value, offset, noAssert) {
-      value = +value;
-      offset = offset | 0;
-      if (!noAssert) checkInt$1(this, value, offset, 2, 0xffff, 0);
-      if (Buffer$1.TYPED_ARRAY_SUPPORT) {
-        this[offset] = (value >>> 8);
-        this[offset + 1] = (value & 0xff);
-      } else {
-        objectWriteUInt16$1(this, value, offset, false);
-      }
-      return offset + 2
-    };
-
-    function objectWriteUInt32$1 (buf, value, offset, littleEndian) {
-      if (value < 0) value = 0xffffffff + value + 1;
-      for (var i = 0, j = Math.min(buf.length - offset, 4); i < j; ++i) {
-        buf[offset + i] = (value >>> (littleEndian ? i : 3 - i) * 8) & 0xff;
-      }
-    }
-
-    Buffer$1.prototype.writeUInt32LE = function writeUInt32LE (value, offset, noAssert) {
-      value = +value;
-      offset = offset | 0;
-      if (!noAssert) checkInt$1(this, value, offset, 4, 0xffffffff, 0);
-      if (Buffer$1.TYPED_ARRAY_SUPPORT) {
-        this[offset + 3] = (value >>> 24);
-        this[offset + 2] = (value >>> 16);
-        this[offset + 1] = (value >>> 8);
-        this[offset] = (value & 0xff);
-      } else {
-        objectWriteUInt32$1(this, value, offset, true);
-      }
-      return offset + 4
-    };
-
-    Buffer$1.prototype.writeUInt32BE = function writeUInt32BE (value, offset, noAssert) {
-      value = +value;
-      offset = offset | 0;
-      if (!noAssert) checkInt$1(this, value, offset, 4, 0xffffffff, 0);
-      if (Buffer$1.TYPED_ARRAY_SUPPORT) {
-        this[offset] = (value >>> 24);
-        this[offset + 1] = (value >>> 16);
-        this[offset + 2] = (value >>> 8);
-        this[offset + 3] = (value & 0xff);
-      } else {
-        objectWriteUInt32$1(this, value, offset, false);
-      }
-      return offset + 4
-    };
-
-    Buffer$1.prototype.writeIntLE = function writeIntLE (value, offset, byteLength, noAssert) {
-      value = +value;
-      offset = offset | 0;
-      if (!noAssert) {
-        var limit = Math.pow(2, 8 * byteLength - 1);
-
-        checkInt$1(this, value, offset, byteLength, limit - 1, -limit);
-      }
-
-      var i = 0;
-      var mul = 1;
-      var sub = 0;
-      this[offset] = value & 0xFF;
-      while (++i < byteLength && (mul *= 0x100)) {
-        if (value < 0 && sub === 0 && this[offset + i - 1] !== 0) {
-          sub = 1;
-        }
-        this[offset + i] = ((value / mul) >> 0) - sub & 0xFF;
-      }
-
-      return offset + byteLength
-    };
-
-    Buffer$1.prototype.writeIntBE = function writeIntBE (value, offset, byteLength, noAssert) {
-      value = +value;
-      offset = offset | 0;
-      if (!noAssert) {
-        var limit = Math.pow(2, 8 * byteLength - 1);
-
-        checkInt$1(this, value, offset, byteLength, limit - 1, -limit);
-      }
-
-      var i = byteLength - 1;
-      var mul = 1;
-      var sub = 0;
-      this[offset + i] = value & 0xFF;
-      while (--i >= 0 && (mul *= 0x100)) {
-        if (value < 0 && sub === 0 && this[offset + i + 1] !== 0) {
-          sub = 1;
-        }
-        this[offset + i] = ((value / mul) >> 0) - sub & 0xFF;
-      }
-
-      return offset + byteLength
-    };
-
-    Buffer$1.prototype.writeInt8 = function writeInt8 (value, offset, noAssert) {
-      value = +value;
-      offset = offset | 0;
-      if (!noAssert) checkInt$1(this, value, offset, 1, 0x7f, -0x80);
-      if (!Buffer$1.TYPED_ARRAY_SUPPORT) value = Math.floor(value);
-      if (value < 0) value = 0xff + value + 1;
-      this[offset] = (value & 0xff);
-      return offset + 1
-    };
-
-    Buffer$1.prototype.writeInt16LE = function writeInt16LE (value, offset, noAssert) {
-      value = +value;
-      offset = offset | 0;
-      if (!noAssert) checkInt$1(this, value, offset, 2, 0x7fff, -0x8000);
-      if (Buffer$1.TYPED_ARRAY_SUPPORT) {
-        this[offset] = (value & 0xff);
-        this[offset + 1] = (value >>> 8);
-      } else {
-        objectWriteUInt16$1(this, value, offset, true);
-      }
-      return offset + 2
-    };
-
-    Buffer$1.prototype.writeInt16BE = function writeInt16BE (value, offset, noAssert) {
-      value = +value;
-      offset = offset | 0;
-      if (!noAssert) checkInt$1(this, value, offset, 2, 0x7fff, -0x8000);
-      if (Buffer$1.TYPED_ARRAY_SUPPORT) {
-        this[offset] = (value >>> 8);
-        this[offset + 1] = (value & 0xff);
-      } else {
-        objectWriteUInt16$1(this, value, offset, false);
-      }
-      return offset + 2
-    };
-
-    Buffer$1.prototype.writeInt32LE = function writeInt32LE (value, offset, noAssert) {
-      value = +value;
-      offset = offset | 0;
-      if (!noAssert) checkInt$1(this, value, offset, 4, 0x7fffffff, -0x80000000);
-      if (Buffer$1.TYPED_ARRAY_SUPPORT) {
-        this[offset] = (value & 0xff);
-        this[offset + 1] = (value >>> 8);
-        this[offset + 2] = (value >>> 16);
-        this[offset + 3] = (value >>> 24);
-      } else {
-        objectWriteUInt32$1(this, value, offset, true);
-      }
-      return offset + 4
-    };
-
-    Buffer$1.prototype.writeInt32BE = function writeInt32BE (value, offset, noAssert) {
-      value = +value;
-      offset = offset | 0;
-      if (!noAssert) checkInt$1(this, value, offset, 4, 0x7fffffff, -0x80000000);
-      if (value < 0) value = 0xffffffff + value + 1;
-      if (Buffer$1.TYPED_ARRAY_SUPPORT) {
-        this[offset] = (value >>> 24);
-        this[offset + 1] = (value >>> 16);
-        this[offset + 2] = (value >>> 8);
-        this[offset + 3] = (value & 0xff);
-      } else {
-        objectWriteUInt32$1(this, value, offset, false);
-      }
-      return offset + 4
-    };
-
-    function checkIEEE754$1 (buf, value, offset, ext, max, min) {
-      if (offset + ext > buf.length) throw new RangeError('Index out of range')
-      if (offset < 0) throw new RangeError('Index out of range')
-    }
-
-    function writeFloat$1 (buf, value, offset, littleEndian, noAssert) {
-      if (!noAssert) {
-        checkIEEE754$1(buf, value, offset, 4);
-      }
-      write(buf, value, offset, littleEndian, 23, 4);
-      return offset + 4
-    }
-
-    Buffer$1.prototype.writeFloatLE = function writeFloatLE (value, offset, noAssert) {
-      return writeFloat$1(this, value, offset, true, noAssert)
-    };
-
-    Buffer$1.prototype.writeFloatBE = function writeFloatBE (value, offset, noAssert) {
-      return writeFloat$1(this, value, offset, false, noAssert)
-    };
-
-    function writeDouble$1 (buf, value, offset, littleEndian, noAssert) {
-      if (!noAssert) {
-        checkIEEE754$1(buf, value, offset, 8);
-      }
-      write(buf, value, offset, littleEndian, 52, 8);
-      return offset + 8
-    }
-
-    Buffer$1.prototype.writeDoubleLE = function writeDoubleLE (value, offset, noAssert) {
-      return writeDouble$1(this, value, offset, true, noAssert)
-    };
-
-    Buffer$1.prototype.writeDoubleBE = function writeDoubleBE (value, offset, noAssert) {
-      return writeDouble$1(this, value, offset, false, noAssert)
-    };
-
-    // copy(targetBuffer, targetStart=0, sourceStart=0, sourceEnd=buffer.length)
-    Buffer$1.prototype.copy = function copy (target, targetStart, start, end) {
-      if (!start) start = 0;
-      if (!end && end !== 0) end = this.length;
-      if (targetStart >= target.length) targetStart = target.length;
-      if (!targetStart) targetStart = 0;
-      if (end > 0 && end < start) end = start;
-
-      // Copy 0 bytes; we're done
-      if (end === start) return 0
-      if (target.length === 0 || this.length === 0) return 0
-
-      // Fatal error conditions
-      if (targetStart < 0) {
-        throw new RangeError('targetStart out of bounds')
-      }
-      if (start < 0 || start >= this.length) throw new RangeError('sourceStart out of bounds')
-      if (end < 0) throw new RangeError('sourceEnd out of bounds')
-
-      // Are we oob?
-      if (end > this.length) end = this.length;
-      if (target.length - targetStart < end - start) {
-        end = target.length - targetStart + start;
-      }
-
-      var len = end - start;
-      var i;
-
-      if (this === target && start < targetStart && targetStart < end) {
-        // descending copy from end
-        for (i = len - 1; i >= 0; --i) {
-          target[i + targetStart] = this[i + start];
-        }
-      } else if (len < 1000 || !Buffer$1.TYPED_ARRAY_SUPPORT) {
-        // ascending copy from start
-        for (i = 0; i < len; ++i) {
-          target[i + targetStart] = this[i + start];
-        }
-      } else {
-        Uint8Array.prototype.set.call(
-          target,
-          this.subarray(start, start + len),
-          targetStart
-        );
-      }
-
-      return len
-    };
-
-    // Usage:
-    //    buffer.fill(number[, offset[, end]])
-    //    buffer.fill(buffer[, offset[, end]])
-    //    buffer.fill(string[, offset[, end]][, encoding])
-    Buffer$1.prototype.fill = function fill (val, start, end, encoding) {
-      // Handle string cases:
-      if (typeof val === 'string') {
-        if (typeof start === 'string') {
-          encoding = start;
-          start = 0;
-          end = this.length;
-        } else if (typeof end === 'string') {
-          encoding = end;
-          end = this.length;
-        }
-        if (val.length === 1) {
-          var code = val.charCodeAt(0);
-          if (code < 256) {
-            val = code;
-          }
-        }
-        if (encoding !== undefined && typeof encoding !== 'string') {
-          throw new TypeError('encoding must be a string')
-        }
-        if (typeof encoding === 'string' && !Buffer$1.isEncoding(encoding)) {
-          throw new TypeError('Unknown encoding: ' + encoding)
-        }
-      } else if (typeof val === 'number') {
-        val = val & 255;
-      }
-
-      // Invalid ranges are not set to a default, so can range check early.
-      if (start < 0 || this.length < start || this.length < end) {
-        throw new RangeError('Out of range index')
-      }
-
-      if (end <= start) {
-        return this
-      }
-
-      start = start >>> 0;
-      end = end === undefined ? this.length : end >>> 0;
-
-      if (!val) val = 0;
-
-      var i;
-      if (typeof val === 'number') {
-        for (i = start; i < end; ++i) {
-          this[i] = val;
-        }
-      } else {
-        var bytes = internalIsBuffer$1(val)
-          ? val
-          : utf8ToBytes$1(new Buffer$1(val, encoding).toString());
-        var len = bytes.length;
-        for (i = 0; i < end - start; ++i) {
-          this[i + start] = bytes[i % len];
-        }
-      }
-
-      return this
-    };
-
-    // HELPER FUNCTIONS
-    // ================
-
-    var INVALID_BASE64_RE$1 = /[^+\/0-9A-Za-z-_]/g;
-
-    function base64clean$1 (str) {
-      // Node strips out invalid characters like \n and \t from the string, base64-js does not
-      str = stringtrim$1(str).replace(INVALID_BASE64_RE$1, '');
-      // Node converts strings with length < 2 to ''
-      if (str.length < 2) return ''
-      // Node allows for non-padded base64 strings (missing trailing ===), base64-js does not
-      while (str.length % 4 !== 0) {
-        str = str + '=';
-      }
-      return str
-    }
-
-    function stringtrim$1 (str) {
-      if (str.trim) return str.trim()
-      return str.replace(/^\s+|\s+$/g, '')
-    }
-
-    function toHex$1 (n) {
-      if (n < 16) return '0' + n.toString(16)
-      return n.toString(16)
-    }
-
-    function utf8ToBytes$1 (string, units) {
-      units = units || Infinity;
-      var codePoint;
-      var length = string.length;
-      var leadSurrogate = null;
-      var bytes = [];
-
-      for (var i = 0; i < length; ++i) {
-        codePoint = string.charCodeAt(i);
-
-        // is surrogate component
-        if (codePoint > 0xD7FF && codePoint < 0xE000) {
-          // last char was a lead
-          if (!leadSurrogate) {
-            // no lead yet
-            if (codePoint > 0xDBFF) {
-              // unexpected trail
-              if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD);
-              continue
-            } else if (i + 1 === length) {
-              // unpaired lead
-              if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD);
-              continue
-            }
-
-            // valid lead
-            leadSurrogate = codePoint;
-
-            continue
-          }
-
-          // 2 leads in a row
-          if (codePoint < 0xDC00) {
-            if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD);
-            leadSurrogate = codePoint;
-            continue
-          }
-
-          // valid surrogate pair
-          codePoint = (leadSurrogate - 0xD800 << 10 | codePoint - 0xDC00) + 0x10000;
-        } else if (leadSurrogate) {
-          // valid bmp char, but last char was a lead
-          if ((units -= 3) > -1) bytes.push(0xEF, 0xBF, 0xBD);
-        }
-
-        leadSurrogate = null;
-
-        // encode utf8
-        if (codePoint < 0x80) {
-          if ((units -= 1) < 0) break
-          bytes.push(codePoint);
-        } else if (codePoint < 0x800) {
-          if ((units -= 2) < 0) break
-          bytes.push(
-            codePoint >> 0x6 | 0xC0,
-            codePoint & 0x3F | 0x80
-          );
-        } else if (codePoint < 0x10000) {
-          if ((units -= 3) < 0) break
-          bytes.push(
-            codePoint >> 0xC | 0xE0,
-            codePoint >> 0x6 & 0x3F | 0x80,
-            codePoint & 0x3F | 0x80
-          );
-        } else if (codePoint < 0x110000) {
-          if ((units -= 4) < 0) break
-          bytes.push(
-            codePoint >> 0x12 | 0xF0,
-            codePoint >> 0xC & 0x3F | 0x80,
-            codePoint >> 0x6 & 0x3F | 0x80,
-            codePoint & 0x3F | 0x80
-          );
-        } else {
-          throw new Error('Invalid code point')
-        }
-      }
-
-      return bytes
-    }
-
-    function asciiToBytes$1 (str) {
-      var byteArray = [];
-      for (var i = 0; i < str.length; ++i) {
-        // Node's code seems to be doing this and not & 0x7F..
-        byteArray.push(str.charCodeAt(i) & 0xFF);
-      }
-      return byteArray
-    }
-
-    function utf16leToBytes$1 (str, units) {
-      var c, hi, lo;
-      var byteArray = [];
-      for (var i = 0; i < str.length; ++i) {
-        if ((units -= 2) < 0) break
-
-        c = str.charCodeAt(i);
-        hi = c >> 8;
-        lo = c % 256;
-        byteArray.push(lo);
-        byteArray.push(hi);
-      }
-
-      return byteArray
-    }
-
-
-    function base64ToBytes$1 (str) {
-      return toByteArray(base64clean$1(str))
-    }
-
-    function blitBuffer$1 (src, dst, offset, length) {
-      for (var i = 0; i < length; ++i) {
-        if ((i + offset >= dst.length) || (i >= src.length)) break
-        dst[i + offset] = src[i];
-      }
-      return i
-    }
-
-    function isnan$1 (val) {
-      return val !== val // eslint-disable-line no-self-compare
-    }
-
-
-    // the following is from is-buffer, also by Feross Aboukhadijeh and with same lisence
-    // The _isBuffer check is for Safari 5-7 support, because it's missing
-    // Object.prototype.constructor. Remove this eventually
-    function isBuffer$1(obj) {
-      return obj != null && (!!obj._isBuffer || isFastBuffer$1(obj) || isSlowBuffer$1(obj))
-    }
-
-    function isFastBuffer$1 (obj) {
-      return !!obj.constructor && typeof obj.constructor.isBuffer === 'function' && obj.constructor.isBuffer(obj)
-    }
-
-    // For Node v0.10 support. Remove this eventually.
-    function isSlowBuffer$1 (obj) {
-      return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isFastBuffer$1(obj.slice(0, 0))
-    }
-
     function BufferList() {
       this.head = null;
       this.tail = null;
@@ -4934,9 +3159,9 @@
     };
 
     BufferList.prototype.concat = function (n) {
-      if (this.length === 0) return Buffer$1.alloc(0);
+      if (this.length === 0) return Buffer.alloc(0);
       if (this.length === 1) return this.head.data;
-      var ret = Buffer$1.allocUnsafe(n >>> 0);
+      var ret = Buffer.allocUnsafe(n >>> 0);
       var p = this.head;
       var i = 0;
       while (p) {
@@ -4948,7 +3173,7 @@
     };
 
     // Copyright Joyent, Inc. and other Node contributors.
-    var isBufferEncoding = Buffer$1.isEncoding
+    var isBufferEncoding = Buffer.isEncoding
       || function(encoding) {
            switch (encoding && encoding.toLowerCase()) {
              case 'hex': case 'utf8': case 'utf-8': case 'ascii': case 'binary': case 'base64': case 'ucs2': case 'ucs-2': case 'utf16le': case 'utf-16le': case 'raw': return true;
@@ -4997,7 +3222,7 @@
 
       // Enough space to store all bytes of a single character. UTF-8 needs 4
       // bytes, but CESU-8 may require up to 6 (3 bytes per surrogate).
-      this.charBuffer = new Buffer$1(6);
+      this.charBuffer = new Buffer(6);
       // Number of bytes received for the current incomplete multi-byte character.
       this.charReceived = 0;
       // Number of bytes expected for the current incomplete multi-byte character.
@@ -6198,7 +4423,7 @@
       // if it is not a buffer, string, or undefined.
       if (chunk === null) {
         er = new TypeError('May not write null values to stream');
-      } else if (!Buffer$1.isBuffer(chunk) && typeof chunk !== 'string' && chunk !== undefined && !state.objectMode) {
+      } else if (!Buffer.isBuffer(chunk) && typeof chunk !== 'string' && chunk !== undefined && !state.objectMode) {
         er = new TypeError('Invalid non-string/buffer chunk');
       }
       if (er) {
@@ -6218,7 +4443,7 @@
         encoding = null;
       }
 
-      if (Buffer$1.isBuffer(chunk)) encoding = 'buffer';else if (!encoding) encoding = state.defaultEncoding;
+      if (Buffer.isBuffer(chunk)) encoding = 'buffer';else if (!encoding) encoding = state.defaultEncoding;
 
       if (typeof cb !== 'function') cb = nop;
 
@@ -6256,7 +4481,7 @@
 
     function decodeChunk(state, chunk, encoding) {
       if (!state.objectMode && state.decodeStrings !== false && typeof chunk === 'string') {
-        chunk = Buffer$1.from(chunk, encoding);
+        chunk = Buffer.from(chunk, encoding);
       }
       return chunk;
     }
@@ -6267,7 +4492,7 @@
     function writeOrBuffer(stream, state, chunk, encoding, cb) {
       chunk = decodeChunk(state, chunk, encoding);
 
-      if (Buffer$1.isBuffer(chunk)) encoding = 'buffer';
+      if (Buffer.isBuffer(chunk)) encoding = 'buffer';
       var len = state.objectMode ? 1 : chunk.length;
 
       state.length += len;
@@ -6951,150 +5176,6 @@
         throw new Error(`unsupported number: ${n}`);
       }
     }
-
-    // shim for using process in browser
-    // based off https://github.com/defunctzombie/node-process/blob/master/browser.js
-
-    function defaultSetTimout$1() {
-        throw new Error('setTimeout has not been defined');
-    }
-    function defaultClearTimeout$1 () {
-        throw new Error('clearTimeout has not been defined');
-    }
-    var cachedSetTimeout$1 = defaultSetTimout$1;
-    var cachedClearTimeout$1 = defaultClearTimeout$1;
-    if (typeof global$1.setTimeout === 'function') {
-        cachedSetTimeout$1 = setTimeout;
-    }
-    if (typeof global$1.clearTimeout === 'function') {
-        cachedClearTimeout$1 = clearTimeout;
-    }
-
-    function runTimeout$1(fun) {
-        if (cachedSetTimeout$1 === setTimeout) {
-            //normal enviroments in sane situations
-            return setTimeout(fun, 0);
-        }
-        // if setTimeout wasn't available but was latter defined
-        if ((cachedSetTimeout$1 === defaultSetTimout$1 || !cachedSetTimeout$1) && setTimeout) {
-            cachedSetTimeout$1 = setTimeout;
-            return setTimeout(fun, 0);
-        }
-        try {
-            // when when somebody has screwed with setTimeout but no I.E. maddness
-            return cachedSetTimeout$1(fun, 0);
-        } catch(e){
-            try {
-                // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
-                return cachedSetTimeout$1.call(null, fun, 0);
-            } catch(e){
-                // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
-                return cachedSetTimeout$1.call(this, fun, 0);
-            }
-        }
-
-
-    }
-    function runClearTimeout$1(marker) {
-        if (cachedClearTimeout$1 === clearTimeout) {
-            //normal enviroments in sane situations
-            return clearTimeout(marker);
-        }
-        // if clearTimeout wasn't available but was latter defined
-        if ((cachedClearTimeout$1 === defaultClearTimeout$1 || !cachedClearTimeout$1) && clearTimeout) {
-            cachedClearTimeout$1 = clearTimeout;
-            return clearTimeout(marker);
-        }
-        try {
-            // when when somebody has screwed with setTimeout but no I.E. maddness
-            return cachedClearTimeout$1(marker);
-        } catch (e){
-            try {
-                // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
-                return cachedClearTimeout$1.call(null, marker);
-            } catch (e){
-                // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
-                // Some versions of I.E. have different rules for clearTimeout vs setTimeout
-                return cachedClearTimeout$1.call(this, marker);
-            }
-        }
-
-
-
-    }
-    var queue$1 = [];
-    var draining$1 = false;
-    var currentQueue$1;
-    var queueIndex$1 = -1;
-
-    function cleanUpNextTick$1() {
-        if (!draining$1 || !currentQueue$1) {
-            return;
-        }
-        draining$1 = false;
-        if (currentQueue$1.length) {
-            queue$1 = currentQueue$1.concat(queue$1);
-        } else {
-            queueIndex$1 = -1;
-        }
-        if (queue$1.length) {
-            drainQueue$1();
-        }
-    }
-
-    function drainQueue$1() {
-        if (draining$1) {
-            return;
-        }
-        var timeout = runTimeout$1(cleanUpNextTick$1);
-        draining$1 = true;
-
-        var len = queue$1.length;
-        while(len) {
-            currentQueue$1 = queue$1;
-            queue$1 = [];
-            while (++queueIndex$1 < len) {
-                if (currentQueue$1) {
-                    currentQueue$1[queueIndex$1].run();
-                }
-            }
-            queueIndex$1 = -1;
-            len = queue$1.length;
-        }
-        currentQueue$1 = null;
-        draining$1 = false;
-        runClearTimeout$1(timeout);
-    }
-    function nextTick$1(fun) {
-        var args = new Array(arguments.length - 1);
-        if (arguments.length > 1) {
-            for (var i = 1; i < arguments.length; i++) {
-                args[i - 1] = arguments[i];
-            }
-        }
-        queue$1.push(new Item$1(fun, args));
-        if (queue$1.length === 1 && !draining$1) {
-            runTimeout$1(drainQueue$1);
-        }
-    }
-    // v8 likes predictible objects
-    function Item$1(fun, array) {
-        this.fun = fun;
-        this.array = array;
-    }
-    Item$1.prototype.run = function () {
-        this.fun.apply(null, this.array);
-    };
-
-    // from https://github.com/kumavis/browser-process-hrtime/blob/master/index.js
-    var performance$1 = global$1.performance || {};
-    var performanceNow$1 =
-      performance$1.now        ||
-      performance$1.mozNow     ||
-      performance$1.msNow      ||
-      performance$1.oNow       ||
-      performance$1.webkitNow  ||
-      function(){ return (new Date()).getTime() };
 
     var msg = {
       2:      'need dictionary',     /* Z_NEED_DICT       2  */
@@ -12546,7 +10627,7 @@
       this.write_in_progress = true;
 
       var self = this;
-      nextTick$1(function() {
+      nextTick(function() {
         self.write_in_progress = false;
         var res = self._write(flush, input, in_off, in_len, out, out_off, out_len);
         self.callback(res[0], res[1]);
@@ -13090,7 +11171,7 @@
           }
         });
       } else {
-        nextTick$1(callback);
+        nextTick(callback);
       }
     };
 
@@ -13114,7 +11195,7 @@
 
       if (ws.ended) {
         if (callback)
-          nextTick$1(callback);
+          nextTick(callback);
       } else if (ws.ending) {
         if (callback)
           this.once('end', callback);
@@ -13131,7 +11212,7 @@
 
     Zlib$1.prototype.close = function(callback) {
       if (callback)
-        nextTick$1(callback);
+        nextTick(callback);
 
       if (this._closed)
         return;
@@ -13141,7 +11222,7 @@
       this._binding.close();
 
       var self = this;
-      nextTick$1(function() {
+      nextTick(function() {
         self.emit('close');
       });
     };
@@ -19942,7 +18023,7 @@
     }));
     });
 
-    var F__musescoreDownloader_node_modules_cryptoJs = createCommonjsModule(function (module, exports) {
+    var cryptoJs = createCommonjsModule(function (module, exports) {
     (function (root, factory, undef) {
     	{
     		// CommonJS
@@ -22056,11 +20137,11 @@
           infoStr += `${key}: ${info[key]}\n`;
         }
 
-        return wordArrayToBuffer(F__musescoreDownloader_node_modules_cryptoJs.MD5(infoStr));
+        return wordArrayToBuffer(cryptoJs.MD5(infoStr));
       }
 
       static generateRandomWordArray(bytes) {
-        return F__musescoreDownloader_node_modules_cryptoJs.lib.WordArray.random(bytes);
+        return cryptoJs.lib.WordArray.random(bytes);
       }
 
       static create(document, options = {}) {
@@ -22201,7 +20282,7 @@
           processedUserPassword,
           PDFSecurity.generateRandomWordArray
         );
-        const userKeySalt = F__musescoreDownloader_node_modules_cryptoJs.lib.WordArray.create(
+        const userKeySalt = cryptoJs.lib.WordArray.create(
           userPasswordEntry.words.slice(10, 12),
           8
         );
@@ -22215,7 +20296,7 @@
           userPasswordEntry,
           PDFSecurity.generateRandomWordArray
         );
-        const ownerKeySalt = F__musescoreDownloader_node_modules_cryptoJs.lib.WordArray.create(
+        const ownerKeySalt = cryptoJs.lib.WordArray.create(
           ownerPasswordEntry.words.slice(10, 12),
           8
         );
@@ -22257,7 +20338,7 @@
           digest = this.encryptionKey
             .clone()
             .concat(
-              F__musescoreDownloader_node_modules_cryptoJs.lib.WordArray.create(
+              cryptoJs.lib.WordArray.create(
                 [
                   ((obj & 0xff) << 24) |
                     ((obj & 0xff00) << 8) |
@@ -22271,19 +20352,19 @@
         }
 
         if (this.version === 1 || this.version === 2) {
-          let key = F__musescoreDownloader_node_modules_cryptoJs.MD5(digest);
+          let key = cryptoJs.MD5(digest);
           key.sigBytes = Math.min(16, this.keyBits / 8 + 5);
           return buffer =>
             wordArrayToBuffer(
-              F__musescoreDownloader_node_modules_cryptoJs.RC4.encrypt(F__musescoreDownloader_node_modules_cryptoJs.lib.WordArray.create(buffer), key)
+              cryptoJs.RC4.encrypt(cryptoJs.lib.WordArray.create(buffer), key)
                 .ciphertext
             );
         }
 
         let key;
         if (this.version === 4) {
-          key = F__musescoreDownloader_node_modules_cryptoJs.MD5(
-            digest.concat(F__musescoreDownloader_node_modules_cryptoJs.lib.WordArray.create([0x73416c54], 4))
+          key = cryptoJs.MD5(
+            digest.concat(cryptoJs.lib.WordArray.create([0x73416c54], 4))
           );
         } else {
           key = this.encryptionKey;
@@ -22291,8 +20372,8 @@
 
         const iv = PDFSecurity.generateRandomWordArray(16);
         const options = {
-          mode: F__musescoreDownloader_node_modules_cryptoJs.mode.CBC,
-          padding: F__musescoreDownloader_node_modules_cryptoJs.pad.Pkcs7,
+          mode: cryptoJs.mode.CBC,
+          padding: cryptoJs.pad.Pkcs7,
           iv
         };
 
@@ -22301,8 +20382,8 @@
             iv
               .clone()
               .concat(
-                F__musescoreDownloader_node_modules_cryptoJs.AES.encrypt(
-                  F__musescoreDownloader_node_modules_cryptoJs.lib.WordArray.create(buffer),
+                cryptoJs.AES.encrypt(
+                  cryptoJs.lib.WordArray.create(buffer),
                   key,
                   options
                 ).ciphertext
@@ -22362,14 +20443,14 @@
     }
 
     function getUserPasswordR2(encryptionKey) {
-      return F__musescoreDownloader_node_modules_cryptoJs.RC4.encrypt(processPasswordR2R3R4(), encryptionKey)
+      return cryptoJs.RC4.encrypt(processPasswordR2R3R4(), encryptionKey)
         .ciphertext;
     }
 
     function getUserPasswordR3R4(documentId, encryptionKey) {
       const key = encryptionKey.clone();
-      let cipher = F__musescoreDownloader_node_modules_cryptoJs.MD5(
-        processPasswordR2R3R4().concat(F__musescoreDownloader_node_modules_cryptoJs.lib.WordArray.create(documentId))
+      let cipher = cryptoJs.MD5(
+        processPasswordR2R3R4().concat(cryptoJs.lib.WordArray.create(documentId))
       );
       for (let i = 0; i < 20; i++) {
         const xorRound = Math.ceil(key.sigBytes / 4);
@@ -22377,9 +20458,9 @@
           key.words[j] =
             encryptionKey.words[j] ^ (i | (i << 8) | (i << 16) | (i << 24));
         }
-        cipher = F__musescoreDownloader_node_modules_cryptoJs.RC4.encrypt(cipher, key).ciphertext;
+        cipher = cryptoJs.RC4.encrypt(cipher, key).ciphertext;
       }
-      return cipher.concat(F__musescoreDownloader_node_modules_cryptoJs.lib.WordArray.create(null, 16));
+      return cipher.concat(cryptoJs.lib.WordArray.create(null, 16));
     }
 
     function getOwnerPasswordR2R3R4(
@@ -22391,7 +20472,7 @@
       let digest = paddedOwnerPassword;
       let round = r >= 3 ? 51 : 1;
       for (let i = 0; i < round; i++) {
-        digest = F__musescoreDownloader_node_modules_cryptoJs.MD5(digest);
+        digest = cryptoJs.MD5(digest);
       }
 
       const key = digest.clone();
@@ -22403,7 +20484,7 @@
         for (let j = 0; j < xorRound; j++) {
           key.words[j] = digest.words[j] ^ (i | (i << 8) | (i << 16) | (i << 24));
         }
-        cipher = F__musescoreDownloader_node_modules_cryptoJs.RC4.encrypt(cipher, key).ciphertext;
+        cipher = cryptoJs.RC4.encrypt(cipher, key).ciphertext;
       }
       return cipher;
     }
@@ -22419,11 +20500,11 @@
       let key = paddedUserPassword
         .clone()
         .concat(ownerPasswordEntry)
-        .concat(F__musescoreDownloader_node_modules_cryptoJs.lib.WordArray.create([lsbFirstWord(permissions)], 4))
-        .concat(F__musescoreDownloader_node_modules_cryptoJs.lib.WordArray.create(documentId));
+        .concat(cryptoJs.lib.WordArray.create([lsbFirstWord(permissions)], 4))
+        .concat(cryptoJs.lib.WordArray.create(documentId));
       const round = r >= 3 ? 51 : 1;
       for (let i = 0; i < round; i++) {
-        key = F__musescoreDownloader_node_modules_cryptoJs.MD5(key);
+        key = cryptoJs.MD5(key);
         key.sigBytes = keyBits / 8;
       }
       return key;
@@ -22432,7 +20513,7 @@
     function getUserPasswordR5(processedUserPassword, generateRandomWordArray) {
       const validationSalt = generateRandomWordArray(8);
       const keySalt = generateRandomWordArray(8);
-      return F__musescoreDownloader_node_modules_cryptoJs.SHA256(processedUserPassword.clone().concat(validationSalt))
+      return cryptoJs.SHA256(processedUserPassword.clone().concat(validationSalt))
         .concat(validationSalt)
         .concat(keySalt);
     }
@@ -22442,15 +20523,15 @@
       userKeySalt,
       encryptionKey
     ) {
-      const key = F__musescoreDownloader_node_modules_cryptoJs.SHA256(
+      const key = cryptoJs.SHA256(
         processedUserPassword.clone().concat(userKeySalt)
       );
       const options = {
-        mode: F__musescoreDownloader_node_modules_cryptoJs.mode.CBC,
-        padding: F__musescoreDownloader_node_modules_cryptoJs.pad.NoPadding,
-        iv: F__musescoreDownloader_node_modules_cryptoJs.lib.WordArray.create(null, 16)
+        mode: cryptoJs.mode.CBC,
+        padding: cryptoJs.pad.NoPadding,
+        iv: cryptoJs.lib.WordArray.create(null, 16)
       };
-      return F__musescoreDownloader_node_modules_cryptoJs.AES.encrypt(encryptionKey, key, options).ciphertext;
+      return cryptoJs.AES.encrypt(encryptionKey, key, options).ciphertext;
     }
 
     function getOwnerPasswordR5(
@@ -22460,7 +20541,7 @@
     ) {
       const validationSalt = generateRandomWordArray(8);
       const keySalt = generateRandomWordArray(8);
-      return F__musescoreDownloader_node_modules_cryptoJs.SHA256(
+      return cryptoJs.SHA256(
         processedOwnerPassword
           .clone()
           .concat(validationSalt)
@@ -22476,18 +20557,18 @@
       userPasswordEntry,
       encryptionKey
     ) {
-      const key = F__musescoreDownloader_node_modules_cryptoJs.SHA256(
+      const key = cryptoJs.SHA256(
         processedOwnerPassword
           .clone()
           .concat(ownerKeySalt)
           .concat(userPasswordEntry)
       );
       const options = {
-        mode: F__musescoreDownloader_node_modules_cryptoJs.mode.CBC,
-        padding: F__musescoreDownloader_node_modules_cryptoJs.pad.NoPadding,
-        iv: F__musescoreDownloader_node_modules_cryptoJs.lib.WordArray.create(null, 16)
+        mode: cryptoJs.mode.CBC,
+        padding: cryptoJs.pad.NoPadding,
+        iv: cryptoJs.lib.WordArray.create(null, 16)
       };
-      return F__musescoreDownloader_node_modules_cryptoJs.AES.encrypt(encryptionKey, key, options).ciphertext;
+      return cryptoJs.AES.encrypt(encryptionKey, key, options).ciphertext;
     }
 
     function getEncryptionKeyR5(generateRandomWordArray) {
@@ -22499,15 +20580,15 @@
       encryptionKey,
       generateRandomWordArray
     ) {
-      const cipher = F__musescoreDownloader_node_modules_cryptoJs.lib.WordArray.create(
+      const cipher = cryptoJs.lib.WordArray.create(
         [lsbFirstWord(permissions), 0xffffffff, 0x54616462],
         12
       ).concat(generateRandomWordArray(4));
       const options = {
-        mode: F__musescoreDownloader_node_modules_cryptoJs.mode.ECB,
-        padding: F__musescoreDownloader_node_modules_cryptoJs.pad.NoPadding
+        mode: cryptoJs.mode.ECB,
+        padding: cryptoJs.pad.NoPadding
       };
-      return F__musescoreDownloader_node_modules_cryptoJs.AES.encrypt(cipher, encryptionKey, options).ciphertext;
+      return cryptoJs.AES.encrypt(cipher, encryptionKey, options).ciphertext;
     }
 
     function processPasswordR2R3R4(password = '') {
@@ -22526,7 +20607,7 @@
         out[index] = PASSWORD_PADDING[index - length];
         index++;
       }
-      return F__musescoreDownloader_node_modules_cryptoJs.lib.WordArray.create(out);
+      return cryptoJs.lib.WordArray.create(out);
     }
 
     function processPasswordR5(password = '') {
@@ -22538,7 +20619,7 @@
         out[i] = password.charCodeAt(i);
       }
 
-      return F__musescoreDownloader_node_modules_cryptoJs.lib.WordArray.create(out);
+      return cryptoJs.lib.WordArray.create(out);
     }
 
     function lsbFirstWord(data) {
@@ -24007,620 +22088,6 @@
       }
     }
 
-    var fs$1 = {};
-
-    function assert$1 (a, msg) {
-      if (!a) {
-        throw new Error(msg);
-      }
-    }
-    var binding$1 = {};
-    Object.keys(_binding).forEach(function (key) {
-      binding$1[key] = _binding[key];
-    });
-    // zlib doesn't provide these, so kludge them in following the same
-    // const naming scheme zlib uses.
-    binding$1.Z_MIN_WINDOWBITS = 8;
-    binding$1.Z_MAX_WINDOWBITS = 15;
-    binding$1.Z_DEFAULT_WINDOWBITS = 15;
-
-    // fewer than 64 bytes per chunk is stupid.
-    // technically it could work with as few as 8, but even 64 bytes
-    // is absurdly low.  Usually a MB or more is best.
-    binding$1.Z_MIN_CHUNK = 64;
-    binding$1.Z_MAX_CHUNK = Infinity;
-    binding$1.Z_DEFAULT_CHUNK = (16 * 1024);
-
-    binding$1.Z_MIN_MEMLEVEL = 1;
-    binding$1.Z_MAX_MEMLEVEL = 9;
-    binding$1.Z_DEFAULT_MEMLEVEL = 8;
-
-    binding$1.Z_MIN_LEVEL = -1;
-    binding$1.Z_MAX_LEVEL = 9;
-    binding$1.Z_DEFAULT_LEVEL = binding$1.Z_DEFAULT_COMPRESSION;
-
-
-    // translation table for return codes.
-    var codes$1 = {
-      Z_OK: binding$1.Z_OK,
-      Z_STREAM_END: binding$1.Z_STREAM_END,
-      Z_NEED_DICT: binding$1.Z_NEED_DICT,
-      Z_ERRNO: binding$1.Z_ERRNO,
-      Z_STREAM_ERROR: binding$1.Z_STREAM_ERROR,
-      Z_DATA_ERROR: binding$1.Z_DATA_ERROR,
-      Z_MEM_ERROR: binding$1.Z_MEM_ERROR,
-      Z_BUF_ERROR: binding$1.Z_BUF_ERROR,
-      Z_VERSION_ERROR: binding$1.Z_VERSION_ERROR
-    };
-
-    Object.keys(codes$1).forEach(function(k) {
-      codes$1[codes$1[k]] = k;
-    });
-
-    function createDeflate$1(o) {
-      return new Deflate$1(o);
-    }
-
-    function createInflate$1(o) {
-      return new Inflate$1(o);
-    }
-
-    function createDeflateRaw$1(o) {
-      return new DeflateRaw$1(o);
-    }
-
-    function createInflateRaw$1(o) {
-      return new InflateRaw$1(o);
-    }
-
-    function createGzip$1(o) {
-      return new Gzip$1(o);
-    }
-
-    function createGunzip$1(o) {
-      return new Gunzip$1(o);
-    }
-
-    function createUnzip$1(o) {
-      return new Unzip$1(o);
-    }
-
-
-    // Convenience methods.
-    // compress/decompress a string or buffer in one step.
-    function deflate$2(buffer, opts, callback) {
-      if (typeof opts === 'function') {
-        callback = opts;
-        opts = {};
-      }
-      return zlibBuffer$1(new Deflate$1(opts), buffer, callback);
-    }
-
-    function deflateSync$1(buffer, opts) {
-      return zlibBufferSync$1(new Deflate$1(opts), buffer);
-    }
-
-    function gzip$1(buffer, opts, callback) {
-      if (typeof opts === 'function') {
-        callback = opts;
-        opts = {};
-      }
-      return zlibBuffer$1(new Gzip$1(opts), buffer, callback);
-    }
-
-    function gzipSync$1(buffer, opts) {
-      return zlibBufferSync$1(new Gzip$1(opts), buffer);
-    }
-
-    function deflateRaw$1(buffer, opts, callback) {
-      if (typeof opts === 'function') {
-        callback = opts;
-        opts = {};
-      }
-      return zlibBuffer$1(new DeflateRaw$1(opts), buffer, callback);
-    }
-
-    function deflateRawSync$1(buffer, opts) {
-      return zlibBufferSync$1(new DeflateRaw$1(opts), buffer);
-    }
-
-    function unzip$1(buffer, opts, callback) {
-      if (typeof opts === 'function') {
-        callback = opts;
-        opts = {};
-      }
-      return zlibBuffer$1(new Unzip$1(opts), buffer, callback);
-    }
-
-    function unzipSync$1(buffer, opts) {
-      return zlibBufferSync$1(new Unzip$1(opts), buffer);
-    }
-
-    function inflate$2(buffer, opts, callback) {
-      if (typeof opts === 'function') {
-        callback = opts;
-        opts = {};
-      }
-      return zlibBuffer$1(new Inflate$1(opts), buffer, callback);
-    }
-
-    function inflateSync$1(buffer, opts) {
-      return zlibBufferSync$1(new Inflate$1(opts), buffer);
-    }
-
-    function gunzip$1(buffer, opts, callback) {
-      if (typeof opts === 'function') {
-        callback = opts;
-        opts = {};
-      }
-      return zlibBuffer$1(new Gunzip$1(opts), buffer, callback);
-    }
-
-    function gunzipSync$1(buffer, opts) {
-      return zlibBufferSync$1(new Gunzip$1(opts), buffer);
-    }
-
-    function inflateRaw$1(buffer, opts, callback) {
-      if (typeof opts === 'function') {
-        callback = opts;
-        opts = {};
-      }
-      return zlibBuffer$1(new InflateRaw$1(opts), buffer, callback);
-    }
-
-    function inflateRawSync$1(buffer, opts) {
-      return zlibBufferSync$1(new InflateRaw$1(opts), buffer);
-    }
-
-    function zlibBuffer$1(engine, buffer, callback) {
-      var buffers = [];
-      var nread = 0;
-
-      engine.on('error', onError);
-      engine.on('end', onEnd);
-
-      engine.end(buffer);
-      flow();
-
-      function flow() {
-        var chunk;
-        while (null !== (chunk = engine.read())) {
-          buffers.push(chunk);
-          nread += chunk.length;
-        }
-        engine.once('readable', flow);
-      }
-
-      function onError(err) {
-        engine.removeListener('end', onEnd);
-        engine.removeListener('readable', flow);
-        callback(err);
-      }
-
-      function onEnd() {
-        var buf = Buffer.concat(buffers, nread);
-        buffers = [];
-        callback(null, buf);
-        engine.close();
-      }
-    }
-
-    function zlibBufferSync$1(engine, buffer) {
-      if (typeof buffer === 'string')
-        buffer = new Buffer(buffer);
-      if (!isBuffer(buffer))
-        throw new TypeError('Not a string or buffer');
-
-      var flushFlag = binding$1.Z_FINISH;
-
-      return engine._processChunk(buffer, flushFlag);
-    }
-
-    // generic zlib
-    // minimal 2-byte header
-    function Deflate$1(opts) {
-      if (!(this instanceof Deflate$1)) return new Deflate$1(opts);
-      Zlib$2.call(this, opts, binding$1.DEFLATE);
-    }
-
-    function Inflate$1(opts) {
-      if (!(this instanceof Inflate$1)) return new Inflate$1(opts);
-      Zlib$2.call(this, opts, binding$1.INFLATE);
-    }
-
-
-
-    // gzip - bigger header, same deflate compression
-    function Gzip$1(opts) {
-      if (!(this instanceof Gzip$1)) return new Gzip$1(opts);
-      Zlib$2.call(this, opts, binding$1.GZIP);
-    }
-
-    function Gunzip$1(opts) {
-      if (!(this instanceof Gunzip$1)) return new Gunzip$1(opts);
-      Zlib$2.call(this, opts, binding$1.GUNZIP);
-    }
-
-
-
-    // raw - no header
-    function DeflateRaw$1(opts) {
-      if (!(this instanceof DeflateRaw$1)) return new DeflateRaw$1(opts);
-      Zlib$2.call(this, opts, binding$1.DEFLATERAW);
-    }
-
-    function InflateRaw$1(opts) {
-      if (!(this instanceof InflateRaw$1)) return new InflateRaw$1(opts);
-      Zlib$2.call(this, opts, binding$1.INFLATERAW);
-    }
-
-
-    // auto-detect header.
-    function Unzip$1(opts) {
-      if (!(this instanceof Unzip$1)) return new Unzip$1(opts);
-      Zlib$2.call(this, opts, binding$1.UNZIP);
-    }
-
-
-    // the Zlib class they all inherit from
-    // This thing manages the queue of requests, and returns
-    // true or false if there is anything in the queue when
-    // you call the .write() method.
-
-    function Zlib$2(opts, mode) {
-      this._opts = opts = opts || {};
-      this._chunkSize = opts.chunkSize || binding$1.Z_DEFAULT_CHUNK;
-
-      Transform.call(this, opts);
-
-      if (opts.flush) {
-        if (opts.flush !== binding$1.Z_NO_FLUSH &&
-            opts.flush !== binding$1.Z_PARTIAL_FLUSH &&
-            opts.flush !== binding$1.Z_SYNC_FLUSH &&
-            opts.flush !== binding$1.Z_FULL_FLUSH &&
-            opts.flush !== binding$1.Z_FINISH &&
-            opts.flush !== binding$1.Z_BLOCK) {
-          throw new Error('Invalid flush flag: ' + opts.flush);
-        }
-      }
-      this._flushFlag = opts.flush || binding$1.Z_NO_FLUSH;
-
-      if (opts.chunkSize) {
-        if (opts.chunkSize < binding$1.Z_MIN_CHUNK ||
-            opts.chunkSize > binding$1.Z_MAX_CHUNK) {
-          throw new Error('Invalid chunk size: ' + opts.chunkSize);
-        }
-      }
-
-      if (opts.windowBits) {
-        if (opts.windowBits < binding$1.Z_MIN_WINDOWBITS ||
-            opts.windowBits > binding$1.Z_MAX_WINDOWBITS) {
-          throw new Error('Invalid windowBits: ' + opts.windowBits);
-        }
-      }
-
-      if (opts.level) {
-        if (opts.level < binding$1.Z_MIN_LEVEL ||
-            opts.level > binding$1.Z_MAX_LEVEL) {
-          throw new Error('Invalid compression level: ' + opts.level);
-        }
-      }
-
-      if (opts.memLevel) {
-        if (opts.memLevel < binding$1.Z_MIN_MEMLEVEL ||
-            opts.memLevel > binding$1.Z_MAX_MEMLEVEL) {
-          throw new Error('Invalid memLevel: ' + opts.memLevel);
-        }
-      }
-
-      if (opts.strategy) {
-        if (opts.strategy != binding$1.Z_FILTERED &&
-            opts.strategy != binding$1.Z_HUFFMAN_ONLY &&
-            opts.strategy != binding$1.Z_RLE &&
-            opts.strategy != binding$1.Z_FIXED &&
-            opts.strategy != binding$1.Z_DEFAULT_STRATEGY) {
-          throw new Error('Invalid strategy: ' + opts.strategy);
-        }
-      }
-
-      if (opts.dictionary) {
-        if (!isBuffer(opts.dictionary)) {
-          throw new Error('Invalid dictionary: it should be a Buffer instance');
-        }
-      }
-
-      this._binding = new binding$1.Zlib(mode);
-
-      var self = this;
-      this._hadError = false;
-      this._binding.onerror = function(message, errno) {
-        // there is no way to cleanly recover.
-        // continuing only obscures problems.
-        self._binding = null;
-        self._hadError = true;
-
-        var error = new Error(message);
-        error.errno = errno;
-        error.code = binding$1.codes[errno];
-        self.emit('error', error);
-      };
-
-      var level = binding$1.Z_DEFAULT_COMPRESSION;
-      if (typeof opts.level === 'number') level = opts.level;
-
-      var strategy = binding$1.Z_DEFAULT_STRATEGY;
-      if (typeof opts.strategy === 'number') strategy = opts.strategy;
-
-      this._binding.init(opts.windowBits || binding$1.Z_DEFAULT_WINDOWBITS,
-                         level,
-                         opts.memLevel || binding$1.Z_DEFAULT_MEMLEVEL,
-                         strategy,
-                         opts.dictionary);
-
-      this._buffer = new Buffer(this._chunkSize);
-      this._offset = 0;
-      this._closed = false;
-      this._level = level;
-      this._strategy = strategy;
-
-      this.once('end', this.close);
-    }
-
-    inherits$1(Zlib$2, Transform);
-
-    Zlib$2.prototype.params = function(level, strategy, callback) {
-      if (level < binding$1.Z_MIN_LEVEL ||
-          level > binding$1.Z_MAX_LEVEL) {
-        throw new RangeError('Invalid compression level: ' + level);
-      }
-      if (strategy != binding$1.Z_FILTERED &&
-          strategy != binding$1.Z_HUFFMAN_ONLY &&
-          strategy != binding$1.Z_RLE &&
-          strategy != binding$1.Z_FIXED &&
-          strategy != binding$1.Z_DEFAULT_STRATEGY) {
-        throw new TypeError('Invalid strategy: ' + strategy);
-      }
-
-      if (this._level !== level || this._strategy !== strategy) {
-        var self = this;
-        this.flush(binding$1.Z_SYNC_FLUSH, function() {
-          self._binding.params(level, strategy);
-          if (!self._hadError) {
-            self._level = level;
-            self._strategy = strategy;
-            if (callback) callback();
-          }
-        });
-      } else {
-        nextTick$1(callback);
-      }
-    };
-
-    Zlib$2.prototype.reset = function() {
-      return this._binding.reset();
-    };
-
-    // This is the _flush function called by the transform class,
-    // internally, when the last chunk has been written.
-    Zlib$2.prototype._flush = function(callback) {
-      this._transform(new Buffer(0), '', callback);
-    };
-
-    Zlib$2.prototype.flush = function(kind, callback) {
-      var ws = this._writableState;
-
-      if (typeof kind === 'function' || (kind === void 0 && !callback)) {
-        callback = kind;
-        kind = binding$1.Z_FULL_FLUSH;
-      }
-
-      if (ws.ended) {
-        if (callback)
-          nextTick$1(callback);
-      } else if (ws.ending) {
-        if (callback)
-          this.once('end', callback);
-      } else if (ws.needDrain) {
-        var self = this;
-        this.once('drain', function() {
-          self.flush(callback);
-        });
-      } else {
-        this._flushFlag = kind;
-        this.write(new Buffer(0), '', callback);
-      }
-    };
-
-    Zlib$2.prototype.close = function(callback) {
-      if (callback)
-        nextTick$1(callback);
-
-      if (this._closed)
-        return;
-
-      this._closed = true;
-
-      this._binding.close();
-
-      var self = this;
-      nextTick$1(function() {
-        self.emit('close');
-      });
-    };
-
-    Zlib$2.prototype._transform = function(chunk, encoding, cb) {
-      var flushFlag;
-      var ws = this._writableState;
-      var ending = ws.ending || ws.ended;
-      var last = ending && (!chunk || ws.length === chunk.length);
-
-      if (!chunk === null && !isBuffer(chunk))
-        return cb(new Error('invalid input'));
-
-      // If it's the last chunk, or a final flush, we use the Z_FINISH flush flag.
-      // If it's explicitly flushing at some other time, then we use
-      // Z_FULL_FLUSH. Otherwise, use Z_NO_FLUSH for maximum compression
-      // goodness.
-      if (last)
-        flushFlag = binding$1.Z_FINISH;
-      else {
-        flushFlag = this._flushFlag;
-        // once we've flushed the last of the queue, stop flushing and
-        // go back to the normal behavior.
-        if (chunk.length >= ws.length) {
-          this._flushFlag = this._opts.flush || binding$1.Z_NO_FLUSH;
-        }
-      }
-
-      this._processChunk(chunk, flushFlag, cb);
-    };
-
-    Zlib$2.prototype._processChunk = function(chunk, flushFlag, cb) {
-      var availInBefore = chunk && chunk.length;
-      var availOutBefore = this._chunkSize - this._offset;
-      var inOff = 0;
-
-      var self = this;
-
-      var async = typeof cb === 'function';
-
-      if (!async) {
-        var buffers = [];
-        var nread = 0;
-
-        var error;
-        this.on('error', function(er) {
-          error = er;
-        });
-
-        do {
-          var res = this._binding.writeSync(flushFlag,
-                                            chunk, // in
-                                            inOff, // in_off
-                                            availInBefore, // in_len
-                                            this._buffer, // out
-                                            this._offset, //out_off
-                                            availOutBefore); // out_len
-        } while (!this._hadError && callback(res[0], res[1]));
-
-        if (this._hadError) {
-          throw error;
-        }
-
-        var buf = Buffer.concat(buffers, nread);
-        this.close();
-
-        return buf;
-      }
-
-      var req = this._binding.write(flushFlag,
-                                    chunk, // in
-                                    inOff, // in_off
-                                    availInBefore, // in_len
-                                    this._buffer, // out
-                                    this._offset, //out_off
-                                    availOutBefore); // out_len
-
-      req.buffer = chunk;
-      req.callback = callback;
-
-      function callback(availInAfter, availOutAfter) {
-        if (self._hadError)
-          return;
-
-        var have = availOutBefore - availOutAfter;
-        assert$1(have >= 0, 'have should not go down');
-
-        if (have > 0) {
-          var out = self._buffer.slice(self._offset, self._offset + have);
-          self._offset += have;
-          // serve some output to the consumer.
-          if (async) {
-            self.push(out);
-          } else {
-            buffers.push(out);
-            nread += out.length;
-          }
-        }
-
-        // exhausted the output buffer, or used all the input create a new one.
-        if (availOutAfter === 0 || self._offset >= self._chunkSize) {
-          availOutBefore = self._chunkSize;
-          self._offset = 0;
-          self._buffer = new Buffer(self._chunkSize);
-        }
-
-        if (availOutAfter === 0) {
-          // Not actually done.  Need to reprocess.
-          // Also, update the availInBefore to the availInAfter value,
-          // so that if we have to hit it a third (fourth, etc.) time,
-          // it'll have the correct byte counts.
-          inOff += (availInBefore - availInAfter);
-          availInBefore = availInAfter;
-
-          if (!async)
-            return true;
-
-          var newReq = self._binding.write(flushFlag,
-                                           chunk,
-                                           inOff,
-                                           availInBefore,
-                                           self._buffer,
-                                           self._offset,
-                                           self._chunkSize);
-          newReq.callback = callback; // this same function
-          newReq.buffer = chunk;
-          return;
-        }
-
-        if (!async)
-          return false;
-
-        // finished with the chunk.
-        cb();
-      }
-    };
-
-    inherits$1(Deflate$1, Zlib$2);
-    inherits$1(Inflate$1, Zlib$2);
-    inherits$1(Gzip$1, Zlib$2);
-    inherits$1(Gunzip$1, Zlib$2);
-    inherits$1(DeflateRaw$1, Zlib$2);
-    inherits$1(InflateRaw$1, Zlib$2);
-    inherits$1(Unzip$1, Zlib$2);
-    var zlib$1 = {
-      codes: codes$1,
-      createDeflate: createDeflate$1,
-      createInflate: createInflate$1,
-      createDeflateRaw: createDeflateRaw$1,
-      createInflateRaw: createInflateRaw$1,
-      createGzip: createGzip$1,
-      createGunzip: createGunzip$1,
-      createUnzip: createUnzip$1,
-      deflate: deflate$2,
-      deflateSync: deflateSync$1,
-      gzip: gzip$1,
-      gzipSync: gzipSync$1,
-      deflateRaw: deflateRaw$1,
-      deflateRawSync: deflateRawSync$1,
-      unzip: unzip$1,
-      unzipSync: unzipSync$1,
-      inflate: inflate$2,
-      inflateSync: inflateSync$1,
-      gunzip: gunzip$1,
-      gunzipSync: gunzipSync$1,
-      inflateRaw: inflateRaw$1,
-      inflateRawSync: inflateRawSync$1,
-      Deflate: Deflate$1,
-      Inflate: Inflate$1,
-      Gzip: Gzip$1,
-      Gunzip: Gunzip$1,
-      DeflateRaw: DeflateRaw$1,
-      InflateRaw: InflateRaw$1,
-      Unzip: Unzip$1,
-      Zlib: Zlib$2
-    };
-
     /*
      * MIT LICENSE
      * Copyright (c) 2011 Devon Govett
@@ -24646,14 +22113,14 @@
 
     var pngNode = class PNG {
       static decode(path, fn) {
-        return fs$1.readFile(path, function(err, file) {
+        return fs.readFile(path, function(err, file) {
           const png = new PNG(file);
           return png.decode(pixels => fn(pixels));
         });
       }
 
       static load(path) {
-        const file = fs$1.readFileSync(path);
+        const file = fs.readFileSync(path);
         return new PNG(file);
       }
 
@@ -24802,7 +22269,7 @@
       }
 
       decodePixels(fn) {
-        return zlib$1.inflate(this.imgData, (err, data) => {
+        return zlib.inflate(this.imgData, (err, data) => {
           if (err) {
             throw err;
           }
@@ -25997,12 +23464,2565 @@ Please pipe the document into a Node stream.\
     mixin(ImagesMixin);
     mixin(OutputDocumentBrowser);
 
+    var source = createCommonjsModule(function (module) {
+    var SVGtoPDF = function(doc, svg, x, y, options) {
+
+        const NamedColors = {aliceblue: [240,248,255], antiquewhite: [250,235,215], aqua: [0,255,255], aquamarine: [127,255,212], azure: [240,255,255], beige: [245,245,220], bisque: [255,228,196], black: [0,0,0], blanchedalmond: [255,235,205], blue: [0,0,255], blueviolet: [138,43,226], brown: [165,42,42], burlywood: [222,184,135], cadetblue: [95,158,160], chartreuse: [127,255,0],
+          chocolate: [210,105,30], coral: [255,127,80], cornflowerblue: [100,149,237], cornsilk: [255,248,220], crimson: [220,20,60], cyan: [0,255,255], darkblue: [0,0,139], darkcyan: [0,139,139], darkgoldenrod: [184,134,11], darkgray: [169,169,169], darkgrey: [169,169,169], darkgreen: [0,100,0], darkkhaki: [189,183,107], darkmagenta: [139,0,139], darkolivegreen: [85,107,47],
+          darkorange: [255,140,0], darkorchid: [153,50,204], darkred: [139,0,0], darksalmon: [233,150,122], darkseagreen: [143,188,143], darkslateblue: [72,61,139], darkslategray: [47,79,79], darkslategrey: [47,79,79], darkturquoise: [0,206,209], darkviolet: [148,0,211], deeppink: [255,20,147], deepskyblue: [0,191,255], dimgray: [105,105,105], dimgrey: [105,105,105],
+          dodgerblue: [30,144,255], firebrick: [178,34,34], floralwhite: [255,250,240], forestgreen: [34,139,34], fuchsia: [255,0,255], gainsboro: [220,220,220], ghostwhite: [248,248,255], gold: [255,215,0], goldenrod: [218,165,32], gray: [128,128,128], grey: [128,128,128], green: [0,128,0], greenyellow: [173,255,47], honeydew: [240,255,240], hotpink: [255,105,180],
+          indianred: [205,92,92], indigo: [75,0,130], ivory: [255,255,240], khaki: [240,230,140], lavender: [230,230,250], lavenderblush: [255,240,245], lawngreen: [124,252,0], lemonchiffon: [255,250,205], lightblue: [173,216,230], lightcoral: [240,128,128], lightcyan: [224,255,255], lightgoldenrodyellow: [250,250,210], lightgray: [211,211,211], lightgrey: [211,211,211],
+          lightgreen: [144,238,144], lightpink: [255,182,193], lightsalmon: [255,160,122], lightseagreen: [32,178,170], lightskyblue: [135,206,250], lightslategray: [119,136,153], lightslategrey: [119,136,153], lightsteelblue: [176,196,222], lightyellow: [255,255,224], lime: [0,255,0], limegreen: [50,205,50], linen: [250,240,230], magenta: [255,0,255], maroon: [128,0,0],
+          mediumaquamarine: [102,205,170], mediumblue: [0,0,205], mediumorchid: [186,85,211], mediumpurple: [147,112,219], mediumseagreen: [60,179,113], mediumslateblue: [123,104,238], mediumspringgreen: [0,250,154], mediumturquoise: [72,209,204], mediumvioletred: [199,21,133], midnightblue: [25,25,112], mintcream: [245,255,250], mistyrose: [255,228,225], moccasin: [255,228,181],
+          navajowhite: [255,222,173], navy: [0,0,128], oldlace: [253,245,230], olive: [128,128,0], olivedrab: [107,142,35], orange: [255,165,0], orangered: [255,69,0], orchid: [218,112,214], palegoldenrod: [238,232,170], palegreen: [152,251,152], paleturquoise: [175,238,238], palevioletred: [219,112,147], papayawhip: [255,239,213], peachpuff: [255,218,185], peru: [205,133,63],
+          pink: [255,192,203], plum: [221,160,221], powderblue: [176,224,230], purple: [128,0,128], rebeccapurple: [102,51,153], red: [255,0,0], rosybrown: [188,143,143], royalblue: [65,105,225], saddlebrown: [139,69,19], salmon: [250,128,114], sandybrown: [244,164,96], seagreen: [46,139,87], seashell: [255,245,238], sienna: [160,82,45], silver: [192,192,192], skyblue: [135,206,235],
+          slateblue: [106,90,205], slategray: [112,128,144], slategrey: [112,128,144], snow: [255,250,250], springgreen: [0,255,127], steelblue: [70,130,180], tan: [210,180,140], teal: [0,128,128], thistle: [216,191,216], tomato: [255,99,71], turquoise: [64,224,208], violet: [238,130,238], wheat: [245,222,179], white: [255,255,255], whitesmoke: [245,245,245], yellow: [255,255,0]};
+        const DefaultColors = {black: [NamedColors.black, 1], white: [NamedColors.white, 1], transparent: [NamedColors.black, 0]};
+        const Entities = {quot: 34, amp: 38, lt: 60, gt: 62, apos: 39, OElig: 338, oelig: 339, Scaron: 352, scaron: 353, Yuml: 376, circ: 710, tilde: 732, ensp: 8194, emsp: 8195, thinsp: 8201, zwnj: 8204, zwj: 8205, lrm: 8206, rlm: 8207, ndash: 8211, mdash: 8212, lsquo: 8216, rsquo: 8217, sbquo: 8218, ldquo: 8220, rdquo: 8221, bdquo: 8222, dagger: 8224, Dagger: 8225, permil: 8240, lsaquo: 8249,
+          rsaquo: 8250, euro: 8364, nbsp: 160, iexcl: 161, cent: 162, pound: 163, curren: 164, yen: 165, brvbar: 166, sect: 167, uml: 168, copy: 169, ordf: 170, laquo: 171, not: 172, shy: 173, reg: 174, macr: 175, deg: 176, plusmn: 177, sup2: 178, sup3: 179, acute: 180, micro: 181, para: 182, middot: 183, cedil: 184, sup1: 185, ordm: 186, raquo: 187, frac14: 188, frac12: 189, frac34: 190,
+          iquest: 191, Agrave: 192, Aacute: 193, Acirc: 194, Atilde: 195, Auml: 196, Aring: 197, AElig: 198, Ccedil: 199, Egrave: 200, Eacute: 201, Ecirc: 202, Euml: 203, Igrave: 204, Iacute: 205, Icirc: 206, Iuml: 207, ETH: 208, Ntilde: 209, Ograve: 210, Oacute: 211, Ocirc: 212, Otilde: 213, Ouml: 214, times: 215, Oslash: 216, Ugrave: 217, Uacute: 218, Ucirc: 219, Uuml: 220, Yacute: 221,
+          THORN: 222, szlig: 223, agrave: 224, aacute: 225, acirc: 226, atilde: 227, auml: 228, aring: 229, aelig: 230, ccedil: 231, egrave: 232, eacute: 233, ecirc: 234, euml: 235, igrave: 236, iacute: 237, icirc: 238, iuml: 239, eth: 240, ntilde: 241, ograve: 242, oacute: 243, ocirc: 244, otilde: 245, ouml: 246, divide: 247, oslash: 248, ugrave: 249, uacute: 250, ucirc: 251, uuml: 252,
+          yacute: 253, thorn: 254, yuml: 255, fnof: 402, Alpha: 913, Beta: 914, Gamma: 915, Delta: 916, Epsilon: 917, Zeta: 918, Eta: 919, Theta: 920, Iota: 921, Kappa: 922, Lambda: 923, Mu: 924, Nu: 925, Xi: 926, Omicron: 927, Pi: 928, Rho: 929, Sigma: 931, Tau: 932, Upsilon: 933, Phi: 934, Chi: 935, Psi: 936, Omega: 937, alpha: 945, beta: 946, gamma: 947, delta: 948, epsilon: 949,
+          zeta: 950, eta: 951, theta: 952, iota: 953, kappa: 954, lambda: 955, mu: 956, nu: 957, xi: 958, omicron: 959, pi: 960, rho: 961, sigmaf: 962, sigma: 963, tau: 964, upsilon: 965, phi: 966, chi: 967, psi: 968, omega: 969, thetasym: 977, upsih: 978, piv: 982, bull: 8226, hellip: 8230, prime: 8242, Prime: 8243, oline: 8254, frasl: 8260, weierp: 8472, image: 8465, real: 8476,
+          trade: 8482, alefsym: 8501, larr: 8592, uarr: 8593, rarr: 8594, darr: 8595, harr: 8596, crarr: 8629, lArr: 8656, uArr: 8657, rArr: 8658, dArr: 8659, hArr: 8660, forall: 8704, part: 8706, exist: 8707, empty: 8709, nabla: 8711, isin: 8712, notin: 8713, ni: 8715, prod: 8719, sum: 8721, minus: 8722, lowast: 8727, radic: 8730, prop: 8733, infin: 8734, ang: 8736, and: 8743, or: 8744,
+          cap: 8745, cup: 8746, int: 8747, there4: 8756, sim: 8764, cong: 8773, asymp: 8776, ne: 8800, equiv: 8801, le: 8804, ge: 8805, sub: 8834, sup: 8835, nsub: 8836, sube: 8838, supe: 8839, oplus: 8853, otimes: 8855, perp: 8869, sdot: 8901, lceil: 8968, rceil: 8969, lfloor: 8970, rfloor: 8971, lang: 9001, rang: 9002, loz: 9674, spades: 9824, clubs: 9827, hearts: 9829, diams: 9830};
+        const PathArguments = {A: 7, a: 7, C: 6, c: 6, H: 1, h: 1, L: 2, l: 2, M: 2, m: 2, Q: 4, q: 4, S: 4, s: 4, T: 2, t: 2, V: 1, v: 1, Z: 0, z: 0};
+        const PathFlags = {A3: true, A4: true, a3: true, a4: true};
+        const Properties = {
+          'color':              {inherit: true, initial: undefined},
+          'visibility':         {inherit: true, initial: 'visible', values: {'hidden': 'hidden', 'collapse': 'hidden', 'visible':'visible'}},
+          'fill':               {inherit: true, initial: DefaultColors.black},
+          'stroke':             {inherit: true, initial: 'none'},
+          'stop-color':         {inherit: false, initial: DefaultColors.black},
+          'fill-opacity':       {inherit: true, initial: 1},
+          'stroke-opacity':     {inherit: true, initial: 1},
+          'stop-opacity':       {inherit: false, initial: 1},
+          'fill-rule':          {inherit: true, initial: 'nonzero', values: {'nonzero':'nonzero', 'evenodd':'evenodd'}},
+          'clip-rule':          {inherit: true, initial: 'nonzero', values: {'nonzero':'nonzero', 'evenodd':'evenodd'}},
+          'stroke-width':       {inherit: true, initial: 1},
+          'stroke-dasharray':   {inherit: true, initial: []},
+          'stroke-dashoffset':  {inherit: true, initial: 0},
+          'stroke-miterlimit':  {inherit: true, initial: 4},
+          'stroke-linejoin':    {inherit: true, initial: 'miter', values: {'miter':'miter', 'round':'round', 'bevel':'bevel'}},
+          'stroke-linecap':     {inherit: true, initial: 'butt', values: {'butt':'butt', 'round':'round', 'square':'square'}},
+          'font-size':          {inherit: true, initial: 16, values: {'xx-small':9, 'x-small':10, 'small':13, 'medium':16, 'large':18, 'x-large':24, 'xx-large':32}},
+          'font-family':        {inherit: true, initial: 'sans-serif'},
+          'font-weight':        {inherit: true, initial: 'normal', values: {'600':'bold', '700':'bold', '800':'bold', '900':'bold', 'bold':'bold', 'bolder':'bold', '500':'normal', '400':'normal', '300':'normal', '200':'normal', '100':'normal', 'normal':'normal', 'lighter':'normal'}},
+          'font-style':         {inherit: true, initial: 'normal', values: {'italic':'italic', 'oblique':'italic', 'normal':'normal'}},
+          'text-anchor':        {inherit: true, initial: 'start', values: {'start':'start', 'middle':'middle', 'end':'end'}},
+          'direction':          {inherit: true, initial: 'ltr', values: {'ltr':'ltr', 'rtl':'rtl'}},
+          'dominant-baseline':  {inherit: true, initial: 'baseline', values: {'auto':'baseline', 'baseline':'baseline', 'before-edge':'before-edge', 'text-before-edge':'before-edge', 'middle':'middle', 'central':'central', 'after-edge':'after-edge', 'text-after-edge':'after-edge', 'ideographic':'ideographic', 'alphabetic':'alphabetic', 'hanging':'hanging', 'mathematical':'mathematical'}},
+          'alignment-baseline': {inherit: false, initial: undefined, values: {'auto':'baseline', 'baseline':'baseline', 'before-edge':'before-edge', 'text-before-edge':'before-edge', 'middle':'middle', 'central':'central', 'after-edge':'after-edge', 'text-after-edge':'after-edge', 'ideographic':'ideographic', 'alphabetic':'alphabetic', 'hanging':'hanging', 'mathematical':'mathematical'}},
+          'baseline-shift':     {inherit: true, initial: 'baseline', values: {'baseline':'baseline', 'sub':'sub', 'super':'super'}},
+          'word-spacing':       {inherit: true, initial: 0, values: {normal:0}},
+          'letter-spacing':     {inherit: true, initial: 0, values: {normal:0}},
+          'text-decoration':    {inherit: false, initial: 'none', values: {'none':'none', 'underline':'underline', 'overline':'overline', 'line-through':'line-through'}},
+          'xml:space':          {inherit: true, initial: 'default', css: 'white-space', values: {'preserve':'preserve', 'default':'default', 'pre':'preserve', 'pre-line':'preserve', 'pre-wrap':'preserve', 'nowrap': 'default'}},
+          'marker-start':       {inherit: true, initial: 'none'},
+          'marker-mid':         {inherit: true, initial: 'none'},
+          'marker-end':         {inherit: true, initial: 'none'},
+          'opacity':            {inherit: false, initial: 1},
+          'transform':          {inherit: false, initial: [1, 0, 0, 1, 0, 0]},
+          'display':            {inherit: false, initial: 'inline', values: {'none':'none', 'inline':'inline', 'block':'inline'}},
+          'clip-path':          {inherit: false, initial: 'none'},
+          'mask':               {inherit: false, initial: 'none'},
+          'overflow':           {inherit: false, initial: 'hidden', values: {'hidden':'hidden', 'scroll':'hidden', 'visible':'visible'}}
+        };
+
+        function docBeginGroup(bbox) {
+          let group = new (function PDFGroup() {})();
+          group.name = 'G' + (doc._groupCount = (doc._groupCount || 0) + 1);
+          group.resources = doc.ref();
+          group.xobj = doc.ref({
+            Type: 'XObject',
+            Subtype: 'Form',
+            FormType: 1,
+            BBox: bbox,
+            Group: {S: 'Transparency', CS: 'DeviceRGB', I: true, K: false},
+            Resources: group.resources
+          });
+          group.xobj.write('');
+          group.savedMatrix = doc._ctm;
+          group.savedPage = doc.page;
+          groupStack.push(group);
+          doc._ctm = [1, 0, 0, 1, 0, 0];
+          doc.page = {
+            width: doc.page.width, height: doc.page.height,
+            write: function(data) {group.xobj.write(data);},
+            fonts: {}, xobjects: {}, ext_gstates: {}, patterns: {}
+          };
+          return group;
+        }
+        function docEndGroup(group) {
+          if (group !== groupStack.pop()) {throw('Group not matching');}
+          if (Object.keys(doc.page.fonts).length) {group.resources.data.Font = doc.page.fonts;}
+          if (Object.keys(doc.page.xobjects).length) {group.resources.data.XObject = doc.page.xobjects;}
+          if (Object.keys(doc.page.ext_gstates).length) {group.resources.data.ExtGState = doc.page.ext_gstates;}
+          if (Object.keys(doc.page.patterns).length) {group.resources.data.Pattern = doc.page.patterns;}
+          group.resources.end();
+          group.xobj.end();
+          doc._ctm = group.savedMatrix;
+          doc.page = group.savedPage;
+        }
+        function docInsertGroup(group) {
+          doc.page.xobjects[group.name] = group.xobj;
+          doc.addContent('/' + group.name + ' Do');
+        }
+        function docApplyMask(group, clip) {
+          let name = 'M' + (doc._maskCount = (doc._maskCount || 0) + 1);
+          let gstate = doc.ref({
+            Type: 'ExtGState', CA: 1, ca: 1, BM: 'Normal',
+            SMask: {S: 'Luminosity', G: group.xobj, BC: (clip ? [0, 0, 0] : [1, 1, 1])}
+          });
+          gstate.end();
+          doc.page.ext_gstates[name] = gstate;
+          doc.addContent('/' + name + ' gs');
+        }
+        function docCreatePattern(group, dx, dy, matrix) {
+          let pattern = new (function PDFPattern() {})();
+          pattern.group = group;
+          pattern.dx = dx;
+          pattern.dy = dy;
+          pattern.matrix = matrix || [1, 0, 0, 1, 0, 0];
+          return pattern;
+        }
+        function docUsePattern(pattern, stroke) {
+          let name = 'P' + (doc._patternCount = (doc._patternCount || 0) + 1);
+          let ref = doc.ref({
+            Type: 'Pattern', PatternType: 1, PaintType: 1, TilingType: 2,
+            BBox: [0, 0, pattern.dx, pattern.dy], XStep: pattern.dx, YStep: pattern.dy,
+            Matrix: multiplyMatrix(doc._ctm, pattern.matrix),
+            Resources: {
+              ProcSet: ['PDF', 'Text', 'ImageB', 'ImageC', 'ImageI'],
+              XObject: (function() {let temp = {}; temp[pattern.group.name] = pattern.group.xobj; return temp;})()
+            }
+          });
+          ref.write('/' + pattern.group.name + ' Do');
+          ref.end();
+          doc.page.patterns[name] = ref;
+          if (stroke) {
+            doc.addContent('/Pattern CS');
+            doc.addContent('/' + name + ' SCN');
+          } else {
+            doc.addContent('/Pattern cs');
+            doc.addContent('/' + name + ' scn');
+          }
+        }
+        function docBeginText(font, size) {
+          if (!doc.page.fonts[font.id]) {doc.page.fonts[font.id] = font.ref();}
+          doc.addContent('BT').addContent('/' + font.id + ' ' + size + ' Tf');
+        }
+        function docSetTextMatrix(a, b, c, d, e, f) {
+          doc.addContent(validateNumber(a) + ' ' + validateNumber(b) + ' ' + validateNumber(-c) + ' '  + validateNumber(-d) + ' ' + validateNumber(e) + ' ' + validateNumber(f) + ' Tm');
+        }
+        function docSetTextMode(fill, stroke) {
+          let mode = fill && stroke ? 2 : stroke ? 1 : fill ? 0 : 3;
+          doc.addContent(mode + ' Tr');
+        }
+        function docWriteGlyph(glyph) {
+          doc.addContent('<' + glyph + '> Tj');
+        }
+        function docEndText() {
+          doc.addContent('ET');
+        }
+        function docFillColor(color) {
+          if (color[0].constructor.name === 'PDFPattern') {
+            doc.fillOpacity(color[1]);
+            docUsePattern(color[0], false);
+          } else {
+            doc.fillColor(color[0], color[1]);
+          }
+        }
+        function docStrokeColor(color) {
+          if (color[0].constructor.name === 'PDFPattern') {
+            doc.strokeOpacity(color[1]);
+            docUsePattern(color[0], true);
+          } else {
+            doc.strokeColor(color[0], color[1]);
+          }
+        }
+        function docInsertLink(x, y, w, h, url) {
+          let ref = doc.ref({
+            Type: 'Annot',
+            Subtype: 'Link',
+            Rect: [x, y, w, h],
+            Border: [0, 0, 0],
+            A: {
+              S: 'URI',
+              URI: new String(url)
+            }
+          });
+          ref.end();
+          links.push(ref);
+        }
+        function parseXml(xml) {
+          let SvgNode = function(tag, type, value, error) {
+            this.error = error;
+            this.nodeName = tag;
+            this.nodeValue = value;
+            this.nodeType = type;
+            this.attributes = Object.create(null);
+            this.childNodes = [];
+            this.parentNode = null;
+            this.id = '';
+            this.textContent = '';
+            this.classList = [];
+          };
+          SvgNode.prototype.getAttribute = function(attr) {
+            return this.attributes[attr] != null ? this.attributes[attr] : null;
+          };
+          SvgNode.prototype.getElementById = function(id) {
+            let result = null;
+            (function recursive(node) {
+              if (result) {return;}
+              if (node.nodeType === 1) {
+                if (node.id === id) {result = node;}
+                for (let i = 0; i < node.childNodes.length; i++) {
+                  recursive(node.childNodes[i]);
+                }
+              }
+            })(this);
+            return result;
+          };
+          SvgNode.prototype.getElementsByTagName = function(tag) {
+            let result = [];
+            (function recursive(node) {
+              if (node.nodeType === 1) {
+                if (node.nodeName === tag) {result.push(node);}
+                for (let i = 0; i < node.childNodes.length; i++) {
+                  recursive(node.childNodes[i]);
+                }
+              }
+            })(this);
+            return result;
+          };
+          let parser = new StringParser(xml.trim()), result, child, error = false; 
+          let recursive = function() {
+            let temp, child;
+            if (temp = parser.match(/^<([\w:.-]+)\s*/, true)) { // Opening tag
+              let node = new SvgNode(temp[1], 1, null, error);
+              while (temp = parser.match(/^([\w:.-]+)(?:\s*=\s*"([^"]*)"|\s*=\s*'([^']*)')?\s*/, true)) { // Attribute
+                let attr = temp[1], value = decodeEntities(temp[2] || temp[3] || '');
+                if (!node.attributes[attr]) {
+                  node.attributes[attr] = value;
+                  if (attr === 'id') {node.id = value;}
+                  if (attr === 'class') {node.classList = value.split(' ');}
+                } else {
+                  warningCallback('parseXml: duplicate attribute "' + attr + '"');
+                  error = true;
+                }
+              }
+              if (parser.match(/^>/)) { // End of opening tag
+                while (child = recursive()) {
+                  node.childNodes.push(child);
+                  child.parentNode = node;
+                  node.textContent += (child.nodeType === 3 || child.nodeType === 4 ? child.nodeValue : child.textContent);
+                }
+                if (temp = parser.match(/^<\/([\w:.-]+)\s*>/, true)) { // Closing tag
+                  if (temp[1] === node.nodeName) {
+                    return node;
+                  } else {
+                    warningCallback('parseXml: tag not matching, opening "' + node.nodeName + '" & closing "' + temp[1] + '"');
+                    error = true;
+                    return node;
+                  }
+                } else {
+                  warningCallback('parseXml: tag not matching, opening "' + node.nodeName + '" & not closing');
+                  error = true;
+                  return node;
+                }
+              } else if (parser.match(/^\/>/)) { // Self-closing tag
+                return node;
+              } else {
+                warningCallback('parseXml: tag could not be parsed "' + node.nodeName + '"');
+                error = true;
+              }
+            } else if (temp = parser.match(/^<!--[\s\S]*?-->/)) { // Comment
+              return new SvgNode(null, 8, temp, error);
+            } else if (temp = parser.match(/^<\?[\s\S]*?\?>/)) { // Processing instructions
+              return new SvgNode(null, 7, temp, error);
+            } else if (temp = parser.match(/^<!DOCTYPE\s*([\s\S]*?)>/)) { // Doctype
+              return new SvgNode(null, 10, temp, error);
+            } else if (temp = parser.match(/^<!\[CDATA\[([\s\S]*?)\]\]>/, true)) { // Cdata node
+              return new SvgNode('#cdata-section', 4, temp[1], error);
+            } else if (temp = parser.match(/^([^<]+)/, true)) { // Text node
+              return new SvgNode('#text', 3, decodeEntities(temp[1]), error);
+            }
+          };
+          while (child = recursive()) {
+            if (child.nodeType === 1 && !result) {
+              result = child;
+            } else if (child.nodeType === 1 || (child.nodeType === 3 && child.nodeValue.trim() !== '')) {
+              warningCallback('parseXml: data after document end has been discarded');
+            }
+          }
+          if (parser.matchAll()) {
+            warningCallback('parseXml: parsing error');
+          }
+          return result;
+        }    function decodeEntities(str) {
+          return(str.replace(/&(?:#([0-9]+)|#[xX]([0-9A-Fa-f]+)|([0-9A-Za-z]+));/g, function(mt, m0, m1, m2) {
+            if (m0) {return String.fromCharCode(parseInt(m0, 10));}
+            else if (m1) {return String.fromCharCode(parseInt(m1, 16));}
+            else if (m2 && Entities[m2]) {return String.fromCharCode(Entities[m2]);}
+            else {return mt;}
+          }));
+        }
+        function parseColor(raw) {
+          let temp, result;
+          raw = (raw || '').trim();
+          if (temp = NamedColors[raw]) {
+            result = [temp.slice(), 1];
+          } else if (temp = raw.match(/^rgba\(\s*([0-9]+)\s*,\s*([0-9]+)\s*,\s*([0-9]+)\s*,\s*([0-9.]+)\s*\)$/i)) {
+            temp[1] = parseInt(temp[1]); temp[2] = parseInt(temp[2]); temp[3] = parseInt(temp[3]); temp[4] = parseFloat(temp[4]);
+            if (temp[1] < 256 && temp[2] < 256 && temp[3] < 256 && temp[4] <= 1) {
+              result = [temp.slice(1, 4), temp[4]];
+            }
+          } else if (temp = raw.match(/^rgb\(\s*([0-9]+)\s*,\s*([0-9]+)\s*,\s*([0-9]+)\s*\)$/i)) {
+            temp[1] = parseInt(temp[1]); temp[2] = parseInt(temp[2]); temp[3] = parseInt(temp[3]);
+            if (temp[1] < 256 && temp[2] < 256 && temp[3] < 256) {
+              result = [temp.slice(1, 4), 1];
+            }
+          } else if (temp = raw.match(/^rgb\(\s*([0-9.]+)%\s*,\s*([0-9.]+)%\s*,\s*([0-9.]+)%\s*\)$/i)) {
+            temp[1] = 2.55 * parseFloat(temp[1]); temp[2] = 2.55 * parseFloat(temp[2]); temp[3] = 2.55 * parseFloat(temp[3]);
+            if (temp[1] < 256 && temp[2] < 256 && temp[3] < 256) {
+              result = [temp.slice(1, 4), 1];
+            }
+          } else if (temp = raw.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i)) {
+            result = [[parseInt(temp[1], 16), parseInt(temp[2], 16), parseInt(temp[3], 16)], 1];
+          } else if (temp = raw.match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i)) {
+            result = [[0x11 * parseInt(temp[1], 16), 0x11 * parseInt(temp[2], 16), 0x11 * parseInt(temp[3], 16)], 1];
+          }
+          return colorCallback ? colorCallback(result, raw) : result;
+        }
+        function opacityToColor(color, opacity, isMask) {
+          let newColor = color[0].slice(),
+              newOpacity = color[1] * opacity;
+          if (isMask) {
+            for (let i = 0; i < color.length; i++) {
+              newColor[i] *= newOpacity;
+            }
+            return [newColor, 1];
+          } else {
+            return [newColor, newOpacity];
+          }
+        }
+        function multiplyMatrix() {
+          function multiply(a, b) {
+            return [ a[0]*b[0]+a[2]*b[1], a[1]*b[0]+a[3]*b[1], a[0]*b[2]+a[2]*b[3],
+                     a[1]*b[2]+a[3]*b[3], a[0]*b[4]+a[2]*b[5]+a[4], a[1]*b[4]+a[3]*b[5]+a[5] ];
+          }
+          let result = arguments[0];
+          for (let i = 1; i < arguments.length; i++) {
+            result = multiply(result, arguments[i]);
+          }
+          return result;
+        }
+        function transformPoint(p, m) {
+          return [m[0] * p[0] + m[2] * p[1] + m[4], m[1] * p[0] + m[3] * p[1] + m[5]];
+        }
+        function getGlobalMatrix() {
+          let ctm = doc._ctm;
+          for (let i = groupStack.length - 1; i >= 0; i--) {
+            ctm = multiplyMatrix(groupStack[i].savedMatrix, ctm);
+          }
+          return ctm;
+        }
+        function getPageBBox() {
+          return new SvgShape().M(0, 0).L(doc.page.width, 0).L(doc.page.width, doc.page.height).L(0, doc.page.height)
+                               .transform(inverseMatrix(getGlobalMatrix())).getBoundingBox();
+        }
+        function inverseMatrix(m) {
+          let dt = m[0] * m[3] - m[1] * m[2];
+          return [m[3] / dt, -m[1] / dt, -m[2] / dt, m[0] / dt, (m[2]*m[5] - m[3]*m[4]) / dt, (m[1]*m[4] - m[0]*m[5]) / dt];
+        }
+        function validateMatrix(m) {
+          let m0 = validateNumber(m[0]), m1 = validateNumber(m[1]), m2 = validateNumber(m[2]),
+              m3 = validateNumber(m[3]), m4 = validateNumber(m[4]), m5 = validateNumber(m[5]);
+          if (isNotEqual(m0 * m3 - m1 * m2, 0)) {
+            return [m0, m1, m2, m3, m4, m5];
+          }
+        }
+        function solveEquation(curve) {
+          let a = curve[2] || 0, b = curve[1] || 0, c = curve[0] || 0;
+          if (isEqual(a, 0) && isEqual(b, 0)) {
+            return [];
+          } else if (isEqual(a, 0)) {
+            return [(-c) / b];
+          } else {
+            let d = b * b - 4 * a * c;
+            if (isNotEqual(d, 0) && d > 0) {
+              return [(-b + Math.sqrt(d)) / (2 * a), (-b - Math.sqrt(d)) / (2 * a)];
+            } else if (isEqual(d, 0)) {
+              return [(-b) / (2 * a)];
+            } else {
+              return [];
+            }
+          }
+        }
+        function getCurveValue(t, curve) {
+          return (curve[0] || 0) + (curve[1] || 0) * t + (curve[2] || 0) * t * t + (curve[3] || 0) * t * t * t;
+        }
+        function isEqual(number, ref) {
+          return Math.abs(number - ref) < 1e-10;
+        }
+        function isNotEqual(number, ref) {
+          return Math.abs(number - ref) >= 1e-10;
+        }
+        function validateNumber(n) {
+          return n > -1e21 && n < 1e21 ? Math.round(n * 1e6) / 1e6 : 0;
+        }
+        function isArrayLike(v) {
+          return typeof v === 'object' && v !== null && typeof v.length === 'number';
+        }
+        function parseTranform(v) {
+          let parser = new StringParser((v || '').trim()), result = [1, 0, 0, 1, 0, 0], temp;
+          while (temp = parser.match(/^([A-Za-z]+)\s*[(]([^(]+)[)]/, true)) {
+            let func = temp[1], nums = [], parser2 = new StringParser(temp[2].trim()), temp2;
+            while (temp2 = parser2.matchNumber()) {
+              nums.push(Number(temp2));
+              parser2.matchSeparator();
+            }
+            if (func === 'matrix' && nums.length === 6) {
+              result = multiplyMatrix(result, [nums[0], nums[1], nums[2], nums[3], nums[4], nums[5]]);
+            } else if (func === 'translate' && nums.length === 2) {
+              result = multiplyMatrix(result, [1, 0, 0, 1, nums[0], nums[1]]);
+            } else if (func === 'translate' && nums.length === 1) {
+              result = multiplyMatrix(result, [1, 0, 0, 1, nums[0], 0]);
+            } else if (func === 'scale' && nums.length === 2) {
+              result = multiplyMatrix(result, [nums[0], 0, 0, nums[1], 0, 0]);
+            } else if (func === 'scale' && nums.length === 1) {
+              result = multiplyMatrix(result, [nums[0], 0, 0, nums[0], 0, 0]);
+            } else if (func === 'rotate' && nums.length === 3) {
+              let a = nums[0] * Math.PI / 180;
+              result = multiplyMatrix(result, [1, 0, 0, 1, nums[1], nums[2]], [Math.cos(a), Math.sin(a), -Math.sin(a), Math.cos(a), 0, 0], [1, 0, 0, 1, -nums[1], -nums[2]]);
+            } else if (func === 'rotate' && nums.length === 1) {
+              let a = nums[0] * Math.PI / 180;
+              result = multiplyMatrix(result, [Math.cos(a), Math.sin(a), -Math.sin(a), Math.cos(a), 0, 0]);
+            } else if (func === 'skewX' && nums.length === 1) {
+              let a = nums[0] * Math.PI / 180;
+              result = multiplyMatrix(result, [1, 0, Math.tan(a), 1, 0, 0]);
+            } else if (func === 'skewY' && nums.length === 1) {
+              let a = nums[0] * Math.PI / 180;
+              result = multiplyMatrix(result, [1, Math.tan(a), 0, 1, 0, 0]);
+            } else {return;}
+            parser.matchSeparator();
+          }
+          if (parser.matchAll()) {return;}
+          return result;
+        }
+        function parseAspectRatio(aspectRatio, availWidth, availHeight, elemWidth, elemHeight, initAlign) {
+          let temp = (aspectRatio || '').trim().match(/^(none)$|^x(Min|Mid|Max)Y(Min|Mid|Max)(?:\s+(meet|slice))?$/) || [],
+              ratioType = temp[1] || temp[4] || 'meet',
+              xAlign = temp[2] || 'Mid',
+              yAlign = temp[3] || 'Mid',
+              scaleX = availWidth / elemWidth,
+              scaleY = availHeight / elemHeight,
+              dx = {'Min':0, 'Mid':0.5, 'Max':1}[xAlign] - (initAlign || 0),
+              dy = {'Min':0, 'Mid':0.5, 'Max':1}[yAlign] - (initAlign || 0);
+          if (ratioType === 'slice') {
+            scaleY = scaleX = Math.max(scaleX, scaleY);
+          } else if (ratioType === 'meet') {
+            scaleY = scaleX = Math.min(scaleX, scaleY);
+          }
+          return [scaleX, 0, 0, scaleY, dx * (availWidth - elemWidth * scaleX), dy * (availHeight - elemHeight * scaleY)];
+        }
+        function parseStyleAttr(v) {
+          let result = Object.create(null);
+          v = (v || '').trim().split(/;/);
+          for (let i = 0; i < v.length; i++) {
+            let key = (v[i].split(':')[0] || '').trim(),
+                value = (v[i].split(':')[1] || '').trim();
+            if (key) {
+              result[key] = value;
+            }
+          }
+          if (result['marker']) {
+            if (!result['marker-start']) {result['marker-start'] = result['marker'];}
+            if (!result['marker-mid']) {result['marker-mid'] = result['marker'];}
+            if (!result['marker-end']) {result['marker-end'] = result['marker'];}
+          }
+          if (result['font']) {
+            let fontFamily = null, fontSize = null, fontStyle = "normal", fontWeight = "normal", fontVariant = "normal";
+            let parts = result['font'].split(/\s+/);
+            for (let i = 0; i < parts.length; i++) {
+              switch (parts[i]) {
+                case "normal":
+                  break;
+                case "italic": case "oblique":
+                  fontStyle = parts[i];
+                  break;
+                case "small-caps":
+                  fontVariant = parts[i];
+                  break;
+                case "bold": case "bolder": case "lighter": case "100": case "200": case "300":
+                case "400": case "500": case "600": case "700": case "800": case "900":
+                  fontWeight = parts[i];
+                  break;
+                default:
+                  if (!fontSize) {
+                    fontSize = parts[i].split('/')[0];
+                  } else {
+                    if (!fontFamily) {
+                      fontFamily = parts[i];
+                    } else {
+                      fontFamily += ' ' + parts[i];
+                    }
+                  }
+                  break;
+              }
+            }
+            if (!result['font-style']) {result['font-style'] = fontStyle;}
+            if (!result['font-variant']) {result['font-variant'] = fontVariant;}
+            if (!result['font-weight']) {result['font-weight'] = fontWeight;}
+            if (!result['font-size']) {result['font-size'] = fontSize;}
+            if (!result['font-family']) {result['font-family'] = fontFamily;}
+          }
+          return result;
+        }
+        function parseSelector(v) {
+          let parts = v.split(/(?=[.#])/g), ids = [], classes = [], tags = [], temp;
+          for (let i = 0; i < parts.length; i++) {
+            if (temp = parts[i].match(/^[#]([_A-Za-z0-9-]+)$/)) {
+              ids.push(temp[1]);
+            } else if (temp = parts[i].match(/^[.]([_A-Za-z0-9-]+)$/)) {
+              classes.push(temp[1]);
+            } else if (temp = parts[i].match(/^([_A-Za-z0-9-]+)$/)) {
+              tags.push(temp[1]);
+            } else if (parts[i] !== '*') {
+              return;
+            }
+          }
+          return {
+            tags: tags, ids: ids, classes: classes,
+            specificity: ids.length * 10000 + classes.length * 100 + tags.length
+          };
+        }
+        function parseStyleSheet(v) {
+          let parser = new StringParser(v.trim()), rules = [], rule;
+          while (rule = parser.match(/^\s*([^\{\}]*?)\s*\{([^\{\}]*?)\}/, true)) {
+            let selectors = rule[1].split(/\s*,\s*/g),
+                css = parseStyleAttr(rule[2]);
+            for (let i = 0; i < selectors.length; i++) {
+              let selector = parseSelector(selectors[i]);
+              if (selector) {
+                rules.push({selector: selector, css:css});
+              }
+            }
+          }
+          return rules;
+        }
+        function matchesSelector(elem, selector) {
+          if (elem.nodeType !== 1) {return false;}
+          for (let i = 0; i < selector.tags.length; i++) {
+            if (selector.tags[i] !== elem.nodeName) {return false;}
+          }
+          for (let i = 0; i < selector.ids.length; i++) {
+            if (selector.ids[i] !== elem.id) {return false;}
+          }
+          for (let i = 0; i < selector.classes.length; i++) {
+            if (elem.classList.indexOf(selector.classes[i]) === -1) {return false;}
+          }
+          return true;
+        }
+        function getStyle(elem) {
+          let result = Object.create(null);
+          let specificities = Object.create(null);
+          for (let i = 0; i < styleRules.length; i++) {
+            let rule = styleRules[i];
+            if (matchesSelector(elem, rule.selector)) {
+              for (let key in rule.css) {
+                if (!(specificities[key] > rule.selector.specificity)) {
+                  result[key] = rule.css[key];
+                  specificities[key] = rule.selector.specificity;
+                }
+              }
+            }
+          }
+          return result;
+        }
+        function combineArrays(array1, array2) {
+          return array1.concat(array2.slice(array1.length));
+        }
+        function getAscent(font, size) {
+          return Math.max(font.ascender, (font.bbox[3] || font.bbox.maxY) * (font.scale || 1)) * size / 1000;
+        }
+        function getDescent(font, size) {
+          return Math.min(font.descender, (font.bbox[1] || font.bbox.minY) * (font.scale || 1)) * size / 1000;
+        }
+        function getXHeight(font, size) {
+          return (font.xHeight || 0.5 * (font.ascender - font.descender)) * size / 1000;
+        }
+        function getBaseline(font, size, baseline, shift) {
+          let dy1, dy2;
+          switch (baseline) {
+            case 'middle': dy1 = 0.5 * getXHeight(font, size); break;
+            case 'central': dy1 = 0.5 * (getDescent(font, size) + getAscent(font, size)); break;
+            case 'after-edge': case 'text-after-edge': dy1 = getDescent(font, size); break;
+            case 'alphabetic': case 'auto': case 'baseline': dy1 = 0; break;
+            case 'mathematical': dy1 = 0.5 * getAscent(font, size); break;
+            case 'hanging': dy1 = 0.8 * getAscent(font, size); break;
+            case 'before-edge': case 'text-before-edge': dy1 = getAscent(font, size); break;
+            default: dy1 = 0; break;
+          }
+          switch (shift) {
+            case 'baseline': dy2 = 0; break;
+            case 'super': dy2 = 0.6 * size; break;
+            case 'sub': dy2 = -0.6 * size; break;
+            default: dy2 = shift; break;
+          }
+          return dy1 - dy2;
+        }
+        function getTextPos(font, size, text) {
+          let encoded = font.encode('' + text), hex = encoded[0], pos = encoded[1], data = [];
+          for (let i = 0; i < hex.length; i++) {
+            let unicode = font.unicode ? font.unicode[parseInt(hex[i], 16)] : [text.charCodeAt(i)];
+            data.push({
+              glyph: hex[i],
+              unicode: unicode,
+              width: pos[i].advanceWidth * size / 1000,
+              xOffset: pos[i].xOffset * size / 1000,
+              yOffset: pos[i].yOffset * size / 1000,
+              xAdvance: pos[i].xAdvance * size / 1000,
+              yAdvance: pos[i].yAdvance * size / 1000
+            });
+          }
+          return data;
+        }
+        function createSVGElement(obj, inherits) {
+          switch (obj.nodeName) {
+            case 'use': return new SvgElemUse(obj, inherits);
+            case 'symbol': return new SvgElemSymbol(obj, inherits);
+            case 'g': return new SvgElemGroup(obj, inherits);
+            case 'a': return new SvgElemLink(obj, inherits);
+            case 'svg': return new SvgElemSvg(obj, inherits);
+            case 'image': return new SVGElemImage(obj, inherits);
+            case 'rect': return new SvgElemRect(obj, inherits);
+            case 'circle': return new SvgElemCircle(obj, inherits);
+            case 'ellipse': return new SvgElemEllipse(obj, inherits);
+            case 'line': return new SvgElemLine(obj, inherits);
+            case 'polyline': return new SvgElemPolyline(obj, inherits);
+            case 'polygon': return new SvgElemPolygon(obj, inherits);
+            case 'path': return new SvgElemPath(obj, inherits);
+            case 'text': return new SvgElemText(obj, inherits);
+            case 'tspan': return new SvgElemTspan(obj, inherits);
+            case 'textPath': return new SvgElemTextPath(obj, inherits);
+            case '#text': case '#cdata-section': return new SvgElemTextNode(obj, inherits);
+            default: return new SvgElem(obj, inherits);
+          }
+        }
+
+        var StringParser = function(str) {
+          this.match = function(exp, all) {
+            let temp = str.match(exp);
+            if (!temp || temp.index !== 0) {return;}
+            str = str.substring(temp[0].length);
+            return (all ? temp : temp[0]);
+          };
+          this.matchSeparator = function() {
+            return this.match(/^(?:\s*,\s*|\s*|)/);
+          };
+          this.matchSpace = function() {
+            return this.match(/^(?:\s*)/);
+          };
+          this.matchLengthUnit = function() {
+            return this.match(/^(?:px|pt|cm|mm|in|pc|em|ex|%|)/);
+          };
+          this.matchNumber = function() {
+            return this.match(/^(?:[-+]?(?:[0-9]+[.][0-9]+|[0-9]+[.]|[.][0-9]+|[0-9]+)(?:[eE][-+]?[0-9]+)?)/);
+          };
+          this.matchAll = function() {
+            return this.match(/^[\s\S]+/);
+          };
+        };
+
+        var BezierSegment = function(p1x, p1y, c1x, c1y, c2x, c2y, p2x, p2y) {
+          let divisions = 6 * precision;
+          let equationX = [p1x, -3 * p1x + 3 * c1x, 3 * p1x - 6 * c1x + 3 * c2x, -p1x + 3 * c1x - 3 * c2x + p2x];
+          let equationY = [p1y, -3 * p1y + 3 * c1y, 3 * p1y - 6 * c1y + 3 * c2y, -p1y + 3 * c1y - 3 * c2y + p2y];
+          let derivativeX = [-3 * p1x + 3 * c1x, 6 * p1x - 12 * c1x + 6 * c2x, -3 * p1x + 9 * c1x - 9 * c2x + 3 * p2x];
+          let derivativeY = [-3 * p1y + 3 * c1y, 6 * p1y - 12 * c1y + 6 * c2y, -3 * p1y + 9 * c1y - 9 * c2y + 3 * p2y];
+          let lengthMap = [0];
+          for (let i = 1; i <= divisions; i++) {
+            let t = (i - 0.5) / divisions;
+            let dx = getCurveValue(t, derivativeX) / divisions,
+                dy = getCurveValue(t, derivativeY) / divisions,
+                l = Math.sqrt(dx * dx + dy * dy);
+            lengthMap[i] = lengthMap[i - 1] + l;
+          }
+          this.totalLength = lengthMap[divisions];
+          this.startPoint = [p1x, p1y, isEqual(p1x, c1x) && isEqual(p1y, c1y) ? Math.atan2(c2y - c1y, c2x - c1x) : Math.atan2(c1y - p1y, c1x - p1x)];
+          this.endPoint = [p2x, p2y, isEqual(c2x, p2x) && isEqual(c2y, p2y) ? Math.atan2(c2y - c1y, c2x - c1x) : Math.atan2(p2y - c2y, p2x - c2x)];
+          this.getBoundingBox = function() {
+            let temp;
+            let minX = getCurveValue(0, equationX), minY = getCurveValue(0, equationY),
+                maxX = getCurveValue(1, equationX), maxY = getCurveValue(1, equationY);
+            if (minX > maxX) {temp = maxX; maxX = minX; minX = temp;}
+            if (minY > maxY) {temp = maxY; maxY = minY; minY = temp;}
+            let rootsX = solveEquation(derivativeX);
+            for (let i = 0; i < rootsX.length; i++) {
+              if (rootsX[i] >= 0 && rootsX[i] <= 1) {
+                let x = getCurveValue(rootsX[i], equationX);
+                if (x < minX) {minX = x;}
+                if (x > maxX) {maxX = x;}
+              }
+            }
+            let rootsY = solveEquation(derivativeY);
+            for (let i = 0; i < rootsY.length; i++) {
+              if (rootsY[i] >= 0 && rootsY[i] <= 1) {
+                let y = getCurveValue(rootsY[i], equationY);
+                if (y < minY) {minY = y;}
+                if (y > maxY) {maxY = y;}
+              }
+            }
+            return [minX, minY, maxX, maxY];
+          };
+          this.getPointAtLength = function(l) {
+            if (isEqual(l, 0)) {return this.startPoint;}
+            if (isEqual(l, this.totalLength)) {return this.endPoint;}
+            if (l < 0 || l > this.totalLength) {return;}
+            for (let i = 1; i <= divisions; i++) {
+              let l1 = lengthMap[i-1], l2 = lengthMap[i];
+              if (l1 <= l && l <= l2) {
+                let t = (i - (l2 - l) / (l2 - l1)) / divisions,
+                    x = getCurveValue(t, equationX), y = getCurveValue(t, equationY),
+                    dx = getCurveValue(t, derivativeX), dy = getCurveValue(t, derivativeY);
+                return [x, y, Math.atan2(dy, dx)];
+              }
+            }
+          };
+        };
+
+        var LineSegment = function(p1x, p1y, p2x, p2y) {
+          this.totalLength = Math.sqrt((p2x - p1x) * (p2x - p1x) + (p2y - p1y) * (p2y - p1y));
+          this.startPoint = [p1x, p1y, Math.atan2(p2y - p1y, p2x - p1x)];
+          this.endPoint = [p2x, p2y, Math.atan2(p2y - p1y, p2x - p1x)];
+          this.getBoundingBox = function() {
+            return [Math.min(this.startPoint[0], this.endPoint[0]), Math.min(this.startPoint[1], this.endPoint[1]),
+                    Math.max(this.startPoint[0], this.endPoint[0]), Math.max(this.startPoint[1], this.endPoint[1])];
+          };
+          this.getPointAtLength = function(l) {
+            if (l >= 0 && l <= this.totalLength) {
+              let r = l / this.totalLength || 0,
+                  x = this.startPoint[0] + r * (this.endPoint[0] - this.startPoint[0]),
+                  y = this.startPoint[1] + r * (this.endPoint[1] - this.startPoint[1]);
+              return [x, y, this.startPoint[2]];
+            }
+          };
+        };
+
+        var SvgShape = function() {
+          this.pathCommands = [];
+          this.pathSegments = [];
+          this.startPoint = null;
+          this.endPoint = null;
+          this.totalLength = 0;
+          let startX = 0, startY = 0, currX = 0, currY = 0, lastCom, lastCtrlX, lastCtrlY;
+          this.move = function(x, y) {
+            startX = currX = x; startY = currY = y;
+            return null;
+          };
+          this.line = function(x, y) {
+            let segment = new LineSegment(currX, currY, x, y);
+            currX = x; currY = y;
+            return segment;
+          };
+          this.curve = function(c1x, c1y, c2x, c2y, x, y) {
+            let segment = new BezierSegment(currX, currY, c1x, c1y, c2x, c2y, x, y);
+            currX = x; currY = y;
+            return segment;
+          };
+          this.close = function() {
+            let segment = new LineSegment(currX, currY, startX, startY);
+            currX = startX; currY = startY;
+            return segment;
+          };
+          this.addCommand = function(data) {
+            this.pathCommands.push(data);
+            let segment = this[data[0]].apply(this, data.slice(3));
+            if (segment) {
+              segment.hasStart = data[1];
+              segment.hasEnd = data[2];
+              this.startPoint = this.startPoint || segment.startPoint;
+              this.endPoint = segment.endPoint;
+              this.pathSegments.push(segment);
+              this.totalLength += segment.totalLength;
+            }
+          };
+          this.M = function(x, y) {
+            this.addCommand(['move', true, true, x, y]);
+            lastCom = 'M';
+            return this;
+          };
+          this.m = function(x, y) {
+            return this.M(currX + x, currY + y);
+          };
+          this.Z = this.z = function() {
+            this.addCommand(['close', true, true]);
+            lastCom = 'Z';
+            return this;
+          };
+          this.L = function(x, y) {
+            this.addCommand(['line', true, true, x, y]);
+            lastCom = 'L';
+            return this;
+          };
+          this.l = function(x, y) {
+            return this.L(currX + x, currY + y);
+          };
+          this.H = function(x) {
+            return this.L(x, currY);
+          };
+          this.h = function(x) {
+            return this.L(currX + x, currY);
+          };
+          this.V = function(y) {
+            return this.L(currX, y);
+          };
+          this.v = function(y) {
+            return this.L(currX, currY + y);
+          };
+          this.C = function(c1x, c1y, c2x, c2y, x, y) {
+            this.addCommand(['curve', true, true, c1x, c1y, c2x, c2y, x, y]);
+            lastCom = 'C'; lastCtrlX = c2x; lastCtrlY = c2y;
+            return this;
+          };
+          this.c = function(c1x, c1y, c2x, c2y, x, y) {
+            return this.C(currX + c1x, currY + c1y, currX + c2x, currY + c2y, currX + x, currY + y);
+          };
+          this.S = function(c1x, c1y, x, y) {
+            return this.C(currX + (lastCom === 'C' ? currX - lastCtrlX : 0), currY + (lastCom === 'C' ? currY - lastCtrlY : 0), c1x, c1y, x, y);
+          };
+          this.s = function(c1x, c1y, x, y) {
+            return this.C(currX + (lastCom === 'C' ? currX - lastCtrlX : 0), currY + (lastCom === 'C' ? currY - lastCtrlY : 0), currX + c1x, currY + c1y, currX + x, currY + y);
+          };
+          this.Q = function(cx, cy, x, y) {
+            let c1x = currX + 2 / 3 * (cx - currX), c1y = currY + 2 / 3 * (cy - currY),
+                c2x = x + 2 / 3 * (cx - x), c2y = y + 2 / 3 * (cy - y);
+            this.addCommand(['curve', true, true, c1x, c1y, c2x, c2y, x, y]);
+            lastCom = 'Q'; lastCtrlX = cx; lastCtrlY = cy;
+            return this;
+          };
+          this.q = function(c1x, c1y, x, y) {
+            return this.Q(currX + c1x, currY + c1y, currX + x, currY + y);
+          };
+          this.T = function(x, y) {
+            return this.Q(currX + (lastCom === 'Q' ? currX - lastCtrlX : 0), currY + (lastCom === 'Q' ? currY - lastCtrlY : 0), x, y);
+          };
+          this.t = function(x, y) {
+            return this.Q(currX + (lastCom === 'Q' ? currX - lastCtrlX : 0), currY + (lastCom === 'Q' ? currY - lastCtrlY : 0), currX + x, currY + y);
+          };
+          this.A = function(rx, ry, fi, fa, fs, x, y) {
+            if (isEqual(rx, 0) || isEqual(ry, 0)) {
+              this.addCommand(['line', true, true, x, y]);
+            } else {
+              fi = fi * (Math.PI / 180);
+              rx = Math.abs(rx);
+              ry = Math.abs(ry);
+              fa = 1 * !!fa;
+              fs = 1 * !!fs;
+              let x1 = Math.cos(fi) * (currX - x) / 2 + Math.sin(fi) * (currY - y) / 2,
+                  y1 = Math.cos(fi) * (currY - y) / 2 - Math.sin(fi) * (currX - x) / 2,
+                  lambda = (x1 * x1) / (rx * rx) + (y1 * y1) / (ry * ry);
+              if (lambda > 1) {
+                rx *= Math.sqrt(lambda);
+                ry *= Math.sqrt(lambda);
+              }
+              let r = Math.sqrt(Math.max(0, rx * rx * ry * ry - rx * rx * y1 * y1 - ry * ry * x1 * x1) / (rx * rx * y1 * y1 + ry * ry * x1 * x1)),
+                  x2 = (fa === fs ? -1 : 1) * r * rx * y1 / ry,
+                  y2 = (fa === fs ? 1 : -1) * r * ry * x1 / rx;
+              let cx = Math.cos(fi) * x2 - Math.sin(fi) * y2 + (currX + x) / 2,
+                  cy = Math.sin(fi) * x2 + Math.cos(fi) * y2 + (currY + y) / 2,
+                  th1 = Math.atan2((y1 - y2) / ry, (x1 - x2) / rx),
+                  th2 = Math.atan2((-y1 - y2) / ry, (-x1 - x2) / rx);
+              if (fs === 0 && th2 - th1 > 0) {
+                th2 -= 2 * Math.PI;
+              } else if (fs === 1 && th2 - th1 < 0) {
+                th2 += 2 * Math.PI;
+              }
+              let segms = Math.ceil(Math.abs(th2 - th1) / (Math.PI / precision));
+              for (let i = 0; i < segms; i++) {
+                let th3 = th1 + i * (th2 - th1) / segms,
+                    th4 = th1 + (i + 1) * (th2 - th1) / segms,
+                    t = 4/3 * Math.tan((th4 - th3) / 4);
+                let c1x = cx + Math.cos(fi) * rx * (Math.cos(th3) - t * Math.sin(th3)) - Math.sin(fi) * ry * (Math.sin(th3) + t * Math.cos(th3)),
+                    c1y = cy + Math.sin(fi) * rx * (Math.cos(th3) - t * Math.sin(th3)) + Math.cos(fi) * ry * (Math.sin(th3) + t * Math.cos(th3)),
+                    c2x = cx + Math.cos(fi) * rx * (Math.cos(th4) + t * Math.sin(th4)) - Math.sin(fi) * ry * (Math.sin(th4) - t * Math.cos(th4)),
+                    c2y = cy + Math.sin(fi) * rx * (Math.cos(th4) + t * Math.sin(th4)) + Math.cos(fi) * ry * (Math.sin(th4) - t * Math.cos(th4)),
+                    endX = cx + Math.cos(fi) * rx * Math.cos(th4) - Math.sin(fi) * ry * Math.sin(th4),
+                    endY = cy + Math.sin(fi) * rx * Math.cos(th4) + Math.cos(fi) * ry * Math.sin(th4);
+                this.addCommand(['curve', (i === 0), (i === segms - 1), c1x, c1y, c2x, c2y, endX, endY]);
+              }
+            }
+            lastCom = 'A';
+            return this;
+          };
+          this.a = function(rx, ry, fi, fa, fs, x, y) {
+            return this.A(rx, ry, fi, fa, fs, currX + x, currY + y);
+          };
+          this.path = function(d) {
+            let command, value, temp,
+                parser = new StringParser((d || '').trim());
+            while (command = parser.match(/^[astvzqmhlcASTVZQMHLC]/)) {
+              parser.matchSeparator();
+              let values = [];
+              while (value = (PathFlags[command + values.length] ? parser.match(/^[01]/) : parser.matchNumber())) {
+                parser.matchSeparator();
+                if (values.length === PathArguments[command]) {
+                  this[command].apply(this, values);
+                  values = [];
+                  if (command === 'M') {command = 'L';}
+                  else if (command === 'm') {command = 'l';}
+                }
+                values.push(Number(value));
+              }
+              if (values.length === PathArguments[command]) {
+                this[command].apply(this, values);
+              } else {
+                warningCallback('SvgPath: command ' + command + ' with ' + values.length + ' numbers'); return;
+              }
+            }
+            if (temp = parser.matchAll()) {
+              warningCallback('SvgPath: unexpected string ' + temp);
+            }
+            return this;
+          };
+          this.getBoundingBox = function() {
+            let bbox = [Infinity, Infinity, -Infinity, -Infinity];
+            function addBounds(bbox1) {
+              if (bbox1[0] < bbox[0]) {bbox[0] = bbox1[0];}
+              if (bbox1[2] > bbox[2]) {bbox[2] = bbox1[2];}
+              if (bbox1[1] < bbox[1]) {bbox[1] = bbox1[1];}
+              if (bbox1[3] > bbox[3]) {bbox[3] = bbox1[3];}
+            }
+            for (let i = 0; i < this.pathSegments.length; i++) {
+              addBounds(this.pathSegments[i].getBoundingBox());
+            }
+            if (bbox[0] === Infinity) {bbox[0] = 0;}
+            if (bbox[1] === Infinity) {bbox[1] = 0;}
+            if (bbox[2] === -Infinity) {bbox[2] = 0;}
+            if (bbox[3] === -Infinity) {bbox[3] = 0;}
+            return bbox;
+          };
+          this.getPointAtLength = function(l) {
+            if (l >= 0 && l <= this.totalLength) {
+              let temp;
+              for (let i = 0; i < this.pathSegments.length; i++) {
+                if (temp = this.pathSegments[i].getPointAtLength(l)) {
+                  return temp;
+                }
+                l -= this.pathSegments[i].totalLength;
+              }
+              return this.endPoint;
+            }
+          };
+          this.transform = function(m) {
+            this.pathSegments = [];
+            this.startPoint = null;
+            this.endPoint = null;
+            this.totalLength = 0;
+            for (let i = 0; i < this.pathCommands.length; i++) {
+              let data = this.pathCommands.shift();
+              for (let j = 3; j < data.length; j+=2) {
+                let p = transformPoint([data[j], data[j + 1]], m);
+                data[j] = p[0];
+                data[j + 1] = p[1];
+              }
+              this.addCommand(data);
+            }
+            return this;        
+          };
+          this.mergeShape = function(shape) {
+            for (let i = 0; i < shape.pathCommands.length; i++) {
+              this.addCommand(shape.pathCommands[i].slice());
+            }
+            return this;
+          };
+          this.clone = function() {
+            return new SvgShape().mergeShape(this);
+          };
+          this.insertInDocument = function() {
+            for (let i = 0; i < this.pathCommands.length; i++) {
+              let command = this.pathCommands[i][0], values = this.pathCommands[i].slice(3);
+              switch(command) {
+                case 'move':  doc.moveTo(values[0], values[1]);  break;
+                case 'line':  doc.lineTo(values[0], values[1]);  break;
+                case 'curve':  doc.bezierCurveTo(values[0], values[1], values[2], values[3], values[4], values[5]);  break;
+                case 'close':  doc.closePath();  break;
+              }
+            }
+          };
+          this.getSubPaths = function() {
+            let subPaths = [], shape = new SvgShape();
+            for (let i = 0; i < this.pathCommands.length; i++) {
+              let data = this.pathCommands[i], command = this.pathCommands[i][0];
+              if (command === 'move' && i !== 0) {
+                subPaths.push(shape);
+                shape = new SvgShape();
+              }
+              shape.addCommand(data);
+            }
+            subPaths.push(shape);
+            return subPaths;
+          };
+          this.getMarkers = function() {
+            let markers = [], subPaths = this.getSubPaths();
+            for (let i = 0; i < subPaths.length; i++) {
+              let subPath = subPaths[i], subPathMarkers = [];
+              for (let j = 0; j < subPath.pathSegments.length; j++) {
+                let segment = subPath.pathSegments[j];
+                if (isNotEqual(segment.totalLength, 0) || j === 0 || j === subPath.pathSegments.length - 1) {
+                  if (segment.hasStart) {
+                    let startMarker = segment.getPointAtLength(0), prevEndMarker = subPathMarkers.pop();
+                    if (prevEndMarker) {startMarker[2] = 0.5 * (prevEndMarker[2] + startMarker[2]);}
+                    subPathMarkers.push(startMarker);
+                  }
+                  if (segment.hasEnd) {
+                    let endMarker = segment.getPointAtLength(segment.totalLength);
+                    subPathMarkers.push(endMarker);
+                  }
+                }
+              }
+              markers = markers.concat(subPathMarkers);
+            }
+            return markers;
+          };
+        };
+
+        var SvgElem = function(obj, inherits) {
+          let styleCache = Object.create(null);
+          let childrenCache = null;
+          this.name = obj.nodeName;
+          this.isOuterElement = obj === svg || !obj.parentNode;
+          this.inherits = inherits || (!this.isOuterElement ? createSVGElement(obj.parentNode, null) : null);
+          this.stack = (this.inherits ? this.inherits.stack.concat(obj) : [obj]);
+          this.style = parseStyleAttr(typeof obj.getAttribute === 'function' && obj.getAttribute('style'));
+          this.css = useCSS ? getComputedStyle(obj) : getStyle(obj);
+          this.allowedChildren = [];
+          this.attr = function(key) {
+            if (typeof obj.getAttribute === 'function') {
+              return obj.getAttribute(key);
+            }
+          };
+          this.resolveUrl = function(value) {
+            let temp = (value || '').match(/^\s*(?:url\("(.*)#(.*)"\)|url\('(.*)#(.*)'\)|url\((.*)#(.*)\)|(.*)#(.*))\s*$/) || [];
+            let file = temp[1] || temp[3] || temp[5] || temp[7],
+                id = temp[2] || temp[4] || temp[6] || temp[8];
+            if (id) {
+              if (!file) {
+                let svgObj = svg.getElementById(id);
+                if (svgObj) {
+                  if (this.stack.indexOf(svgObj) === -1) {
+                    return svgObj;
+                  } else {
+                    warningCallback('SVGtoPDF: loop of circular references for id "' + id + '"');
+                    return;
+                  }
+                }
+              }
+              if (documentCallback) {
+                let svgs = documentCache[file];
+                if (!svgs) {
+                  svgs = documentCallback(file);
+                  if (!isArrayLike(svgs)) {svgs = [svgs];}
+                  for (let i = 0; i < svgs.length; i++) {
+                    if (typeof svgs[i] === 'string') {svgs[i] = parseXml(svgs[i]);}
+                  }
+                  documentCache[file] = svgs;
+                }
+                for (let i = 0; i < svgs.length; i++) {
+                  let svgObj = svgs[i].getElementById(id);
+                  if (svgObj) {
+                    if (this.stack.indexOf(svgObj) === -1) {
+                      return svgObj;
+                    } else {
+                      warningCallback('SVGtoPDF: loop of circular references for id "' + file + '#' + id + '"');
+                      return;
+                    }
+                  }
+                }
+              }
+            }
+          };
+          this.computeUnits = function(value, unit, percent, isFontSize) {
+            if (unit === '%') {
+              return parseFloat(value) / 100 * (isFontSize || percent != null ? percent : this.getViewport());
+            } else if (unit === 'ex' || unit === 'em') {
+              return value * {'em':1, 'ex':0.5}[unit] * (isFontSize ? percent : this.get('font-size'));
+            } else {
+              return value * {'':1, 'px':1, 'pt':96/72, 'cm':96/2.54, 'mm':96/25.4, 'in':96, 'pc':96/6}[unit];
+            }
+          };
+          this.computeLength = function(value, percent, initial, isFontSize) {
+            let parser = new StringParser((value || '').trim()), temp1, temp2;
+            if (typeof (temp1 = parser.matchNumber()) === 'string' && typeof (temp2 = parser.matchLengthUnit()) === 'string' && !parser.matchAll()) {
+              return this.computeUnits(temp1, temp2, percent, isFontSize);
+            }
+            return initial;
+          };
+          this.computeLengthList = function(value, percent, strict) {
+            let parser = new StringParser((value || '').trim()), result = [], temp1, temp2;
+            while (typeof (temp1 = parser.matchNumber()) === 'string' && typeof (temp2 = parser.matchLengthUnit()) === 'string') {
+              result.push(this.computeUnits(temp1, temp2, percent));
+              parser.matchSeparator();
+            }
+            if (strict && parser.matchAll()) {return;}
+            return result;
+          };
+          this.getLength = function(key, percent, initial) {
+            return this.computeLength(this.attr(key), percent, initial);
+          };
+          this.getLengthList = function(key, percent) {
+            return this.computeLengthList(this.attr(key), percent);
+          };
+          this.getUrl = function(key) {
+            return this.resolveUrl(this.attr(key))
+          };
+          this.getNumberList = function(key) {
+            let parser = new StringParser((this.attr(key) || '').trim()), result = [], temp;
+            while (temp = parser.matchNumber()) {
+              result.push(Number(temp));
+              parser.matchSeparator();
+            }
+            result.error = parser.matchAll();
+            return result;
+          };
+          this.getViewbox = function(key, initial) {
+            let viewBox = this.getNumberList(key);
+            if (viewBox.length === 4 && viewBox[2] >= 0 && viewBox[3] >= 0) {return viewBox;}
+            return initial;
+          };
+          this.getPercent = function(key, initial) {
+            let value = this.attr(key);
+            let parser = new StringParser((value || '').trim());
+            let number = parser.matchNumber();
+            if (!number) {return initial;}
+            if (parser.match('%')) {number *= 0.01;}
+            if (parser.matchAll()) {return initial;}
+            return Math.max(0, Math.min(1, number));
+          };
+          this.chooseValue = function(args) {
+            for (let i = 0; i < arguments.length; i++) {
+              if (arguments[i] != null && arguments[i] === arguments[i]) {return arguments[i];}
+            }
+            return arguments[arguments.length - 1];
+          };
+          this.get = function(key) {
+            if (styleCache[key] !== undefined) {return styleCache[key];}
+            let keyInfo = Properties[key] || {}, value, result;
+            for (let i = 0; i < 3; i++) {
+              switch (i) {
+                case 0:
+                  if (key !== 'transform') { // the CSS transform behaves strangely
+                    value = this.css[keyInfo.css || key];
+                  }
+                  break;
+                case 1:
+                  value = this.style[key];
+                  break;
+                case 2:
+                  value = this.attr(key);
+                  break;
+              }
+              if (value === 'inherit') {
+                result = (this.inherits ? this.inherits.get(key) : keyInfo.initial);
+                if (result != null) {return styleCache[key] = result;}
+              }
+              if (keyInfo.values != null) {
+                result = keyInfo.values[value];
+                if (result != null) {return styleCache[key] = result;}
+              }
+              if (value != null) {
+                let parsed;
+                switch (key) {
+                  case 'font-size':
+                    result = this.computeLength(value, this.inherits ? this.inherits.get(key) : keyInfo.initial, undefined, true);
+                    break;
+                  case 'baseline-shift':
+                    result = this.computeLength(value, this.get('font-size'));
+                    break;
+                  case 'font-family':
+                    result = value || undefined;
+                    break;
+                  case 'opacity': case 'stroke-opacity': case 'fill-opacity': case 'stop-opacity':
+                    parsed = parseFloat(value);
+                    if (!isNaN(parsed)) {
+                      result = Math.max(0, Math.min(1, parsed));
+                    }
+                    break;
+                  case 'transform':
+                    result = parseTranform(value);
+                    break;
+                  case 'stroke-dasharray':
+                    if (value === 'none') {
+                      result = [];
+                    } else if (parsed = this.computeLengthList(value, this.getViewport(), true)) {
+                      let sum = 0, error = false;
+                      for (let j = 0; j < parsed.length; j++) {
+                        if (parsed[j] < 0) {error = true;}
+                        sum += parsed[j];
+                      }
+                      if (!error) {
+                        if (parsed.length % 2 === 1) {
+                          parsed = parsed.concat(parsed);
+                        }
+                        result = (sum === 0 ? [] : parsed);
+                      }
+                    }
+                    break;
+                  case 'color':
+                    if (value === 'none' || value === 'transparent') {
+                      result = 'none';
+                    } else {
+                      result = parseColor(value);
+                    }
+                    break;
+                  case 'fill': case 'stroke':
+                    if (value === 'none' || value === 'transparent') {
+                      result = 'none';
+                    } else if (value === 'currentColor') {
+                      result = this.get('color');
+                    } else if (parsed = parseColor(value)) {
+                      return parsed;
+                    } else if (parsed = (value || '').split(' ')) {
+                      let object = this.resolveUrl(parsed[0]),
+                          fallbackColor = parseColor(parsed[1]);
+                      if (object == null) {
+                        result = fallbackColor;
+                      } else if (object.nodeName === 'linearGradient' || object.nodeName === 'radialGradient') {
+                        result = new SvgElemGradient(object, null, fallbackColor);
+                      } else if (object.nodeName === 'pattern') {
+                        result = new SvgElemPattern(object, null, fallbackColor);
+                      } else {
+                        result = fallbackColor;
+                      }
+                    }
+                    break;
+                  case 'stop-color':
+                    if (value === 'none' || value === 'transparent') {
+                      result = 'none';
+                    } else if (value === 'currentColor') {
+                      result = this.get('color');
+                    } else {
+                      result = parseColor(value);
+                    }
+                    break;
+                  case 'marker-start': case 'marker-mid': case 'marker-end': case 'clip-path': case 'mask':
+                    if (value === 'none') {
+                      result = 'none';
+                    } else {
+                      result = this.resolveUrl(value);
+                    }
+                    break;
+                  case 'stroke-width':
+                    parsed = this.computeLength(value, this.getViewport());
+                    if (parsed != null && parsed >= 0) {
+                      result = parsed;
+                    }
+                    break;
+                  case 'stroke-miterlimit':
+                    parsed = parseFloat(value);
+                    if (parsed != null && parsed >= 1) {
+                      result = parsed;
+                    }
+                    break;
+                  case 'word-spacing': case 'letter-spacing':
+                    result = this.computeLength(value, this.getViewport());
+                    break;
+                  case 'stroke-dashoffset':
+                    result = this.computeLength(value, this.getViewport());
+                    if (result != null) {
+                      if (result < 0) { // fix for crbug.com/660850
+                        let dasharray = this.get('stroke-dasharray');
+                        for (let j = 0; j < dasharray.length; j++) {result += dasharray[j];}
+                      }
+                    }
+                    break;
+                }
+                if (result != null) {return styleCache[key] = result;}
+              }
+            }
+            return styleCache[key] = (keyInfo.inherit && this.inherits ? this.inherits.get(key) : keyInfo.initial);
+          };
+          this.getChildren = function() {
+            if (childrenCache != null) {return childrenCache;}
+            let children = [];
+            for (let i = 0; i < obj.childNodes.length; i++) {
+              let child = obj.childNodes[i];
+              if (!child.error && this.allowedChildren.indexOf(child.nodeName) !== -1) {
+                children.push(createSVGElement(child, this));
+              }
+            }
+            return childrenCache = children;
+          };
+          this.getParentVWidth = function() {
+            return (this.inherits ? this.inherits.getVWidth(): viewportWidth);
+          };
+          this.getParentVHeight = function() {
+            return (this.inherits ? this.inherits.getVHeight() : viewportHeight);
+          };
+          this.getParentViewport = function() {
+            return Math.sqrt(0.5 * this.getParentVWidth() * this.getParentVWidth() + 0.5 * this.getParentVHeight() * this.getParentVHeight());
+          };
+          this.getVWidth = function() {
+            return this.getParentVWidth();
+          };
+          this.getVHeight = function() {
+            return this.getParentVHeight();
+          };
+          this.getViewport = function() {
+            return Math.sqrt(0.5 * this.getVWidth() * this.getVWidth() + 0.5 * this.getVHeight() * this.getVHeight());
+          };
+          this.getBoundingBox = function() {
+            let shape = this.getBoundingShape();
+            return shape.getBoundingBox();
+          };
+        };
+
+        var SvgElemStylable = function(obj, inherits) {
+          SvgElem.call(this, obj, inherits);
+          this.transform = function() {
+            doc.transform.apply(doc, this.getTransformation());
+          };
+          this.clip = function() {
+            if (this.get('clip-path') !== 'none') {
+              let clipPath = new SvgElemClipPath(this.get('clip-path'), null);
+              clipPath.useMask(this.getBoundingBox());
+              return true;
+            }
+          };
+          this.mask = function() {
+            if (this.get('mask') !== 'none') {
+              let mask = new SvgElemMask(this.get('mask'), null);
+              mask.useMask(this.getBoundingBox());
+              return true;
+            }
+          };
+          this.getFill = function(isClip, isMask) {
+            let opacity = this.get('opacity'),
+                fill = this.get('fill'),
+                fillOpacity = this.get('fill-opacity');
+            if (isClip) {return DefaultColors.white;}
+            if (fill !== 'none' && opacity && fillOpacity) {
+              if (fill instanceof SvgElemGradient || fill instanceof SvgElemPattern) {
+                return fill.getPaint(this.getBoundingBox(), fillOpacity * opacity, isClip, isMask);
+              }
+              return opacityToColor(fill, fillOpacity * opacity, isMask);
+            }
+          };
+          this.getStroke = function(isClip, isMask) {
+            let opacity = this.get('opacity'),
+                stroke = this.get('stroke'),
+                strokeOpacity = this.get('stroke-opacity');
+            if (isClip || isEqual(this.get('stroke-width'), 0)) {return;}
+            if (stroke !== 'none' && opacity && strokeOpacity) {
+              if (stroke instanceof SvgElemGradient || stroke instanceof SvgElemPattern) {
+                return stroke.getPaint(this.getBoundingBox(), strokeOpacity * opacity, isClip, isMask);
+              }
+              return opacityToColor(stroke, strokeOpacity * opacity, isMask);
+            }
+          };
+        };
+
+        var SvgElemHasChildren = function(obj, inherits) {
+          SvgElemStylable.call(this, obj, inherits);
+          this.allowedChildren = ['use', 'g', 'a', 'svg', 'image', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon', 'path', 'text'];
+          this.getBoundingShape = function() {
+            let shape = new SvgShape(),
+                children = this.getChildren();
+            for (let i = 0; i < children.length; i++) {
+              if (children[i].get('display') !== 'none') {
+                if (typeof children[i].getBoundingShape === 'function') {
+                  let childShape = children[i].getBoundingShape().clone();
+                  if (typeof children[i].getTransformation === 'function') {
+                    childShape.transform(children[i].getTransformation());
+                  }
+                  shape.mergeShape(childShape);
+                }
+              }
+            }
+            return shape;
+          };
+          this.drawChildren = function(isClip, isMask) {
+            let children = this.getChildren();
+            for (let i = 0; i < children.length; i++) {
+              if (children[i].get('display') !== 'none') {
+                if (typeof children[i].drawInDocument === 'function') {
+                  children[i].drawInDocument(isClip, isMask);
+                }
+              }
+            }
+          };
+        };
+
+        var SvgElemContainer = function(obj, inherits) {
+          SvgElemHasChildren.call(this, obj, inherits);
+          this.drawContent = function(isClip, isMask) {
+            this.transform();
+            let clipped = this.clip(),
+                masked = this.mask(),
+                group;
+            if ((this.get('opacity') < 1 || clipped || masked) && !isClip) {
+              group = docBeginGroup(getPageBBox());
+            }
+            this.drawChildren(isClip, isMask);
+            if (group) {
+              docEndGroup(group);
+              doc.fillOpacity(this.get('opacity'));
+              docInsertGroup(group);
+            }
+          };
+        };
+
+        var SvgElemUse = function(obj, inherits) {
+          SvgElemContainer.call(this, obj, inherits);
+          let x = this.getLength('x', this.getVWidth(), 0),
+              y = this.getLength('y', this.getVHeight(), 0),
+              child = this.getUrl('href') || this.getUrl('xlink:href');
+          if (child) {child = createSVGElement(child, this);}
+          this.getChildren  = function() {
+            return child ? [child] : [];
+          };
+          this.drawInDocument = function(isClip, isMask) {
+            doc.save();
+            this.drawContent(isClip, isMask);
+            doc.restore();
+          };
+          this.getTransformation = function() {
+            return multiplyMatrix(this.get('transform'), [1, 0, 0, 1, x, y]);
+          };
+        };
+
+        var SvgElemSymbol = function(obj, inherits) {
+          SvgElemContainer.call(this, obj, inherits);
+          let width = this.getLength('width', this.getParentVWidth(), this.getParentVWidth()),
+              height = this.getLength('height', this.getParentVHeight(), this.getParentVHeight());
+          if (inherits instanceof SvgElemUse) {
+            width = inherits.getLength('width', inherits.getParentVWidth(), width);
+            height = inherits.getLength('height', inherits.getParentVHeight(), height);
+          }
+          let aspectRatio = (this.attr('preserveAspectRatio') || '').trim(),
+              viewBox = this.getViewbox('viewBox', [0, 0, width, height]);
+          this.getVWidth = function() {
+            return viewBox[2];
+          };
+          this.getVHeight = function() {
+            return viewBox[3];
+          };
+          this.drawInDocument = function(isClip, isMask) {
+            doc.save();
+            this.drawContent(isClip, isMask);
+            doc.restore();
+          };
+          this.getTransformation = function() {
+            return multiplyMatrix(parseAspectRatio(aspectRatio, width, height, viewBox[2], viewBox[3]), [1, 0, 0, 1, -viewBox[0], -viewBox[1]]);
+          };
+        };
+
+        var SvgElemGroup = function(obj, inherits) {
+          SvgElemContainer.call(this, obj, inherits);
+          this.drawInDocument = function(isClip, isMask) {
+            doc.save();
+            if (this.link && !isClip && !isMask) {this.addLink();}
+            this.drawContent(isClip, isMask);
+            doc.restore();
+          };
+          this.getTransformation = function() {
+            return this.get('transform');
+          };
+        };
+
+        var SvgElemLink = function(obj, inherits) {
+          if (inherits && inherits.isText) {
+            SvgElemTspan.call(this, obj, inherits);
+            this.allowedChildren = ['textPath', 'tspan', '#text', '#cdata-section', 'a'];
+          } else {
+            SvgElemGroup.call(this, obj, inherits);
+          }
+          this.link = this.attr('href') || this.attr('xlink:href');
+          this.addLink = function() {
+            if (this.link.match(/^(?:[a-z][a-z0-9+.-]*:|\/\/)?/i) && this.getChildren().length) {
+              let bbox = this.getBoundingShape().transform(getGlobalMatrix()).getBoundingBox();
+              docInsertLink(bbox[0], bbox[1], bbox[2], bbox[3], this.link);
+            }
+          };
+        };
+
+        var SvgElemSvg = function(obj, inherits) {
+          SvgElemContainer.call(this, obj, inherits);
+          let width = this.getLength('width', this.getParentVWidth(), this.getParentVWidth()),
+              height = this.getLength('height', this.getParentVHeight(), this.getParentVHeight()),
+              x = this.getLength('x', this.getParentVWidth(), 0),
+              y = this.getLength('y', this.getParentVHeight(), 0);
+          if (inherits instanceof SvgElemUse) {
+            width = inherits.getLength('width', inherits.getParentVWidth(), width);
+            height = inherits.getLength('height', inherits.getParentVHeight(), height);
+          }
+          let aspectRatio = this.attr('preserveAspectRatio'),
+              viewBox = this.getViewbox('viewBox', [0, 0, width, height]);
+          if (this.isOuterElement && preserveAspectRatio) {
+            x = y = 0;
+            width = viewportWidth;
+            height = viewportHeight;
+            aspectRatio = preserveAspectRatio;
+          }
+          this.getVWidth = function() {
+            return viewBox[2];
+          };
+          this.getVHeight = function() {
+            return viewBox[3];
+          };
+          this.drawInDocument = function(isClip, isMask) {
+            doc.save();
+            if (this.get('overflow') === 'hidden') {
+              new SvgShape().M(x, y).L(x + width, y).L(x + width, y + height).L(x, y + height).Z()
+                            .transform(this.get('transform'))
+                            .insertInDocument();
+              doc.clip();
+            }
+            this.drawContent(isClip, isMask);
+            doc.restore();
+          };
+          this.getTransformation = function() {
+            return multiplyMatrix(
+              this.get('transform'),
+              [1, 0, 0, 1, x, y],
+              parseAspectRatio(aspectRatio, width, height, viewBox[2], viewBox[3]),
+              [1, 0, 0, 1, -viewBox[0], -viewBox[1]]
+            );
+          };
+        };
+
+        var SVGElemImage = function(obj, inherits) {
+          SvgElemStylable.call(this, obj, inherits);
+          let link = imageCallback(this.attr('href') || this.attr('xlink:href') || ''),
+              x = this.getLength('x', this.getVWidth(), 0),
+              y = this.getLength('y', this.getVHeight(), 0),
+              width = this.getLength('width', this.getVWidth(), 'auto'),
+              height = this.getLength('height', this.getVHeight(), 'auto'),
+              image;
+          try {
+            image = doc.openImage(link);
+          } catch(e) {
+            warningCallback('SVGElemImage: failed to open image "' + link + '" in PDFKit');
+          }
+          if (image) {
+            if (width === 'auto' && height !== 'auto') {
+              width = height * image.width / image.height;
+            } else if (height === 'auto' && width !== 'auto') {
+              height = width * image.height / image.width;
+            } else if (width === 'auto' && height === 'auto') {
+              width = image.width;
+              height = image.height;
+            }
+          }
+          if (width === 'auto' || width < 0) {width = 0;}
+          if (height === 'auto' || height < 0) {height = 0;}
+          this.getTransformation = function() {
+            return this.get('transform');
+          };
+          this.getBoundingShape = function() {
+            return new SvgShape().M(x, y).L(x + width, y).M(x + width, y + height).L(x, y + height);
+          };
+          this.drawInDocument = function(isClip, isMask) {
+            if (this.get('visibility') === 'hidden' || !image) {return;}
+            doc.save();
+            this.transform();
+            if (this.get('overflow') === 'hidden') {
+              doc.rect(x, y, width, height).clip();
+            }
+            this.clip();
+            this.mask();
+            doc.translate(x, y);
+            doc.transform.apply(doc, parseAspectRatio(this.attr('preserveAspectRatio'), width, height, image ? image.width : width, image ? image.height : height));
+            if (!isClip) {
+              doc.fillOpacity(this.get('opacity'));
+              doc.image(image, 0, 0);
+            } else {
+              doc.rect(0, 0, image.width, image.height);
+              docFillColor(DefaultColors.white).fill();
+            }
+            doc.restore();
+          };
+        };
+
+        var SvgElemPattern = function(obj, inherits, fallback) {
+          SvgElemHasChildren.call(this, obj, inherits);
+          this.ref = (function() {
+            let ref = this.getUrl('href') || this.getUrl('xlink:href');
+            if (ref && ref.nodeName === obj.nodeName) {
+              return new SvgElemPattern(ref, inherits, fallback);
+            }
+          }).call(this);
+          let _attr = this.attr;
+          this.attr = function(key) {
+            let attr = _attr.call(this, key);
+            if (attr != null || key === 'href' || key === 'xlink:href') {return attr;}
+            return this.ref ? this.ref.attr(key) : null;
+          };
+          let _getChildren = this.getChildren;
+          this.getChildren = function() {
+            let children = _getChildren.call(this);
+            if (children.length > 0) {return children;}
+            return this.ref ? this.ref.getChildren() : [];
+          };
+          this.getPaint = function(bBox, gOpacity, isClip, isMask) {
+            let bBoxUnitsPattern = (this.attr('patternUnits') !== 'userSpaceOnUse'),
+                bBoxUnitsContent = (this.attr('patternContentUnits') === 'objectBoundingBox'),
+                x = this.getLength('x', (bBoxUnitsPattern ? 1 : this.getParentVWidth()), 0),
+                y = this.getLength('y', (bBoxUnitsPattern ? 1 : this.getParentVHeight()), 0),
+                width = this.getLength('width', (bBoxUnitsPattern ? 1 : this.getParentVWidth()), 0),
+                height = this.getLength('height', (bBoxUnitsPattern ? 1 : this.getParentVHeight()), 0);
+            if (bBoxUnitsContent && !bBoxUnitsPattern) { // Use the same units for pattern & pattern content
+              x = (x - bBox[0]) / (bBox[2] - bBox[0]) || 0;
+              y = (y - bBox[1]) / (bBox[3] - bBox[1]) || 0;
+              width = width / (bBox[2] - bBox[0]) || 0;
+              height = height / (bBox[3] - bBox[1]) || 0;
+            } else if (!bBoxUnitsContent && bBoxUnitsPattern) {
+              x = bBox[0] + x * (bBox[2] - bBox[0]);
+              y = bBox[1] + y * (bBox[3] - bBox[1]);
+              width = width * (bBox[2] - bBox[0]);
+              height = height * (bBox[3] - bBox[1]);
+            }
+            let viewBox = this.getViewbox('viewBox', [0, 0, width, height]),
+                aspectRatio = (this.attr('preserveAspectRatio') || '').trim(),
+                aspectRatioMatrix = multiplyMatrix(
+                  parseAspectRatio(aspectRatio, width, height, viewBox[2], viewBox[3], 0),
+                  [1, 0, 0, 1, -viewBox[0], -viewBox[1]]
+                ),
+                matrix = parseTranform(this.attr('patternTransform'));
+            if (bBoxUnitsContent) {
+              matrix = multiplyMatrix([bBox[2] - bBox[0], 0, 0, bBox[3] - bBox[1], bBox[0], bBox[1]], matrix);
+            }
+            matrix = multiplyMatrix(matrix, [1, 0, 0, 1, x, y]);
+            if ((matrix = validateMatrix(matrix)) && (aspectRatioMatrix = validateMatrix(aspectRatioMatrix)) && (width = validateNumber(width)) && (height = validateNumber(height))) {
+              let group = docBeginGroup([0, 0, width, height]);
+              doc.transform.apply(doc, aspectRatioMatrix);
+              this.drawChildren(isClip, isMask);
+              docEndGroup(group);
+              return [docCreatePattern(group, width, height, matrix), gOpacity];
+            } else {
+              return fallback ? [fallback[0], fallback[1] * gOpacity] : undefined;
+            }
+          };
+          this.getVWidth = function() {
+            let bBoxUnitsPattern = (this.attr('patternUnits') !== 'userSpaceOnUse'),
+                width = this.getLength('width', (bBoxUnitsPattern ? 1 : this.getParentVWidth()), 0);
+            return this.getViewbox('viewBox', [0, 0, width, 0])[2];
+          };
+          this.getVHeight = function() {
+            let bBoxUnitsPattern = (this.attr('patternUnits') !== 'userSpaceOnUse'),
+                height = this.getLength('height', (bBoxUnitsPattern ? 1 : this.getParentVHeight()), 0);
+            return this.getViewbox('viewBox', [0, 0, 0, height])[3];
+          };
+        };
+
+        var SvgElemGradient = function(obj, inherits, fallback) {
+          SvgElem.call(this, obj, inherits);
+          this.allowedChildren = ['stop'];
+          this.ref = (function() {
+            let ref = this.getUrl('href') || this.getUrl('xlink:href');
+            if (ref && ref.nodeName === obj.nodeName) {
+              return new SvgElemGradient(ref, inherits, fallback);
+            }
+          }).call(this);
+          let _attr = this.attr;
+          this.attr = function(key) {
+            let attr = _attr.call(this, key);
+            if (attr != null || key === 'href' || key === 'xlink:href') {return attr;}
+            return this.ref ? this.ref.attr(key) : null;
+          };
+          let _getChildren = this.getChildren;
+          this.getChildren = function() {
+            let children = _getChildren.call(this);
+            if (children.length > 0) {return children;}
+            return this.ref ? this.ref.getChildren() : [];
+          };
+          this.getPaint = function(bBox, gOpacity, isClip, isMask) {
+            let children = this.getChildren();
+            if (children.length === 0) {return;}
+            if (children.length === 1) {
+              let child = children[0],
+                  stopColor = child.get('stop-color');
+              if (stopColor === 'none') {return;}
+              return opacityToColor(stopColor, child.get('stop-opacity') * gOpacity, isMask);
+            }
+            let bBoxUnits = (this.attr('gradientUnits') !== 'userSpaceOnUse'),
+                matrix = parseTranform(this.attr('gradientTransform')),
+                spread = this.attr('spreadMethod'),
+                grad,
+                x1, x2, y1, y2, r2,
+                nAfter = 0,
+                nBefore = 0,
+                nTotal = 1;
+            if (bBoxUnits) {
+              matrix = multiplyMatrix([bBox[2] - bBox[0], 0, 0, bBox[3] - bBox[1], bBox[0], bBox[1]], matrix);
+            }
+            if (matrix = validateMatrix(matrix)) {
+              if (this.name === 'linearGradient') {
+                x1 = this.getLength('x1', (bBoxUnits ? 1 : this.getVWidth()), 0);
+                x2 = this.getLength('x2', (bBoxUnits ? 1 : this.getVWidth()), (bBoxUnits ? 1 : this.getVWidth()));
+                y1 = this.getLength('y1', (bBoxUnits ? 1 : this.getVHeight()), 0);
+                y2 = this.getLength('y2', (bBoxUnits ? 1 : this.getVHeight()), 0);
+              } else {
+                x2 = this.getLength('cx', (bBoxUnits ? 1 : this.getVWidth()), (bBoxUnits ? 0.5 : 0.5 * this.getVWidth()));
+                y2 = this.getLength('cy', (bBoxUnits ? 1 : this.getVHeight()), (bBoxUnits ? 0.5 : 0.5 * this.getVHeight()));
+                r2 = this.getLength('r', (bBoxUnits ? 1 : this.getViewport()), (bBoxUnits ? 0.5 : 0.5 * this.getViewport()));
+                x1 = this.getLength('fx', (bBoxUnits ? 1 : this.getVWidth()), x2);
+                y1 = this.getLength('fy', (bBoxUnits ? 1 : this.getVHeight()), y2);
+                if (r2 < 0) {
+                  warningCallback('SvgElemGradient: negative r value');
+                }
+                let d = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)),
+                    multiplier = 1;
+                if (d > r2) { // according to specification
+                  multiplier = r2 / d;
+                  x1 = x2 + (x1 - x2) * multiplier;
+                  y1 = y2 + (y1 - y2) * multiplier;
+                }
+                r2 = Math.max(r2, d * multiplier * (1 + 1e-6)); // fix for edge-case gradients see issue #84
+              }
+              if (spread === 'reflect' || spread === 'repeat') {
+                let inv = inverseMatrix(matrix),
+                    corner1 = transformPoint([bBox[0], bBox[1]], inv),
+                    corner2 = transformPoint([bBox[2], bBox[1]], inv),
+                    corner3 = transformPoint([bBox[2], bBox[3]], inv),
+                    corner4 = transformPoint([bBox[0], bBox[3]], inv);
+                if (this.name === 'linearGradient') { // See file 'gradient-repeat-maths.png'
+                  nAfter  = Math.max((corner1[0] - x2) * (x2 - x1) + (corner1[1] - y2) * (y2 - y1),
+                                     (corner2[0] - x2) * (x2 - x1) + (corner2[1] - y2) * (y2 - y1),
+                                     (corner3[0] - x2) * (x2 - x1) + (corner3[1] - y2) * (y2 - y1),
+                                     (corner4[0] - x2) * (x2 - x1) + (corner4[1] - y2) * (y2 - y1))
+                                    / (Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+                  nBefore = Math.max((corner1[0] - x1) * (x1 - x2) + (corner1[1] - y1) * (y1 - y2),
+                                     (corner2[0] - x1) * (x1 - x2) + (corner2[1] - y1) * (y1 - y2),
+                                     (corner3[0] - x1) * (x1 - x2) + (corner3[1] - y1) * (y1 - y2),
+                                     (corner4[0] - x1) * (x1 - x2) + (corner4[1] - y1) * (y1 - y2))
+                                    / (Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+                } else {
+                  nAfter  = Math.sqrt(Math.max(Math.pow(corner1[0] - x2, 2) + Math.pow(corner1[1] - y2, 2),
+                                               Math.pow(corner2[0] - x2, 2) + Math.pow(corner2[1] - y2, 2),
+                                               Math.pow(corner3[0] - x2, 2) + Math.pow(corner3[1] - y2, 2),
+                                               Math.pow(corner4[0] - x2, 2) + Math.pow(corner4[1] - y2, 2))) / r2 - 1;
+                }
+                nAfter = Math.ceil(nAfter + 0.5); // Add a little more because the stroke can extend outside of the bounding box
+                nBefore = Math.ceil(nBefore + 0.5);
+                nTotal = nBefore + 1 + nAfter; // How many times the gradient needs to be repeated to fill the object bounding box
+              }
+              if (this.name === 'linearGradient') {
+                grad = doc.linearGradient(x1 - nBefore * (x2 - x1), y1 - nBefore * (y2 - y1), x2 + nAfter * (x2 - x1), y2 + nAfter * (y2 - y1));
+              } else {
+                grad = doc.radialGradient(x1, y1, 0, x2, y2, r2 + nAfter * r2);
+              }
+              for (let n = 0; n < nTotal; n++) {
+                let offset = 0,
+                    inOrder = (spread !== 'reflect' || (n - nBefore) % 2 === 0);
+                for (let i = 0; i < children.length; i++) {
+                  let child = children[inOrder ? i : children.length - 1 - i],
+                      stopColor = child.get('stop-color');
+                  if (stopColor === 'none') {stopColor = DefaultColors.transparent;}
+                  stopColor = opacityToColor(stopColor, child.get('stop-opacity') * gOpacity, isMask);
+                  offset = Math.max(offset, inOrder ? child.getPercent('offset', 0) : 1 - child.getPercent('offset', 0));
+                  if (i === 0 && stopColor[0].length === 4) {grad._colorSpace = 'DeviceCMYK';} // Fix until PR #763 is merged into PDFKit
+                  if (i === 0 && offset > 0) {
+                    grad.stop((n + 0) / nTotal, stopColor[0], stopColor[1]);
+                  }
+                  grad.stop((n + offset) / (nAfter + nBefore + 1), stopColor[0], stopColor[1]);
+                  if (i === children.length - 1 && offset < 1) {
+                    grad.stop((n + 1) / nTotal, stopColor[0], stopColor[1]);
+                  }
+                }
+              }
+              grad.setTransform.apply(grad, matrix);
+              return [grad, 1];
+            } else {
+              return fallback ? [fallback[0], fallback[1] * gOpacity] : undefined;
+            }
+          };
+        };
+
+        var SvgElemBasicShape = function(obj, inherits) {
+          SvgElemStylable.call(this, obj, inherits);
+          this.dashScale = 1;
+          this.getBoundingShape = function() {
+            return this.shape;
+          };
+          this.getTransformation = function() {
+            return this.get('transform');
+          };
+          this.drawInDocument = function(isClip, isMask) {
+            if (this.get('visibility') === 'hidden' || !this.shape) {return;}
+            doc.save();
+            this.transform();
+            this.clip();
+            if (!isClip) {
+              let masked = this.mask(),
+                  group;
+              if (masked) {
+                group = docBeginGroup(getPageBBox());
+              }
+              let subPaths = this.shape.getSubPaths(),
+                  fill = this.getFill(isClip, isMask),
+                  stroke = this.getStroke(isClip, isMask),
+                  lineWidth = this.get('stroke-width'),
+                  lineCap = this.get('stroke-linecap');
+              if (fill || stroke) {
+                if (fill) {
+                  docFillColor(fill);
+                }
+                if (stroke) {
+                  for (let j = 0; j < subPaths.length; j++) {
+                    if (isEqual(subPaths[j].totalLength, 0)) {
+                      if ((lineCap === 'square' || lineCap === 'round') && lineWidth > 0) {
+                        if (subPaths[j].startPoint && subPaths[j].startPoint.length > 1) {
+                          let x = subPaths[j].startPoint[0],
+                              y = subPaths[j].startPoint[1];
+                          docFillColor(stroke);
+                          if (lineCap === 'square') {
+                            doc.rect(x - 0.5 * lineWidth, y - 0.5 * lineWidth, lineWidth, lineWidth);
+                          } else if (lineCap === 'round') {
+                            doc.circle(x, y, 0.5 * lineWidth);
+                          }
+                          doc.fill();
+                        }
+                      }
+                    }
+                  }
+                  let dashArray = this.get('stroke-dasharray'),
+                      dashOffset = this.get('stroke-dashoffset');
+                  if (isNotEqual(this.dashScale, 1)) {
+                    for (let j = 0; j < dashArray.length; j++) {
+                      dashArray[j] *= this.dashScale;
+                    }
+                    dashOffset *= this.dashScale;
+                  }
+                  docStrokeColor(stroke);
+                  doc.lineWidth(lineWidth)
+                     .miterLimit(this.get('stroke-miterlimit'))
+                     .lineJoin(this.get('stroke-linejoin'))
+                     .lineCap(lineCap)
+                     .dash(dashArray, {phase: dashOffset});
+                }
+                for (let j = 0; j < subPaths.length; j++) {
+                  if (subPaths[j].totalLength > 0) {
+                    subPaths[j].insertInDocument();
+                  }
+                }
+                if (fill && stroke) {
+                  doc.fillAndStroke(this.get('fill-rule'));
+                } else if (fill) {
+                  doc.fill(this.get('fill-rule'));
+                } else if (stroke) {
+                  doc.stroke();
+                }
+              }
+              let markerStart = this.get('marker-start'),
+                  markerMid = this.get('marker-mid'),
+                  markerEnd = this.get('marker-end');
+              if (markerStart !== 'none' || markerMid !== 'none' || markerEnd !== 'none') {
+                let markersPos = this.shape.getMarkers();
+                if (markerStart !== 'none') {
+                  let marker = new SvgElemMarker(markerStart, null);
+                  marker.drawMarker(false, isMask, markersPos[0], lineWidth);
+                }
+                if (markerMid !== 'none') {
+                  for (let i = 1; i < markersPos.length - 1; i++) {
+                    let marker = new SvgElemMarker(markerMid, null);
+                    marker.drawMarker(false, isMask, markersPos[i], lineWidth);
+                  }
+                }
+                if (markerEnd !== 'none') {
+                  let marker = new SvgElemMarker(markerEnd, null);
+                  marker.drawMarker(false, isMask, markersPos[markersPos.length - 1], lineWidth);
+                }
+              }
+              if (group) {
+                docEndGroup(group);
+                docInsertGroup(group);
+              }
+            } else {
+              this.shape.insertInDocument();
+              docFillColor(DefaultColors.white);
+              doc.fill(this.get('clip-rule'));
+            }
+            doc.restore();
+          };
+        };
+
+        var SvgElemRect = function(obj, inherits) {
+          SvgElemBasicShape.call(this, obj, inherits);
+          let x = this.getLength('x', this.getVWidth(), 0),
+              y = this.getLength('y', this.getVHeight(), 0),
+              w = this.getLength('width', this.getVWidth(), 0),
+              h = this.getLength('height', this.getVHeight(), 0),
+              rx = this.getLength('rx', this.getVWidth()),
+              ry = this.getLength('ry', this.getVHeight());
+          if (rx === undefined && ry === undefined) {rx = ry = 0;}
+          else if (rx === undefined && ry !== undefined) {rx = ry;}
+          else if (rx !== undefined && ry === undefined) {ry = rx;}
+          if (w > 0 && h > 0) {
+            if (rx && ry) {
+              rx = Math.min(rx, 0.5 * w);
+              ry = Math.min(ry, 0.5 * h);
+              this.shape = new SvgShape().M(x + rx, y).L(x + w - rx, y).A(rx, ry, 0, 0, 1, x + w, y + ry)
+                                .L(x + w, y + h - ry).A(rx, ry, 0, 0, 1, x + w - rx, y + h).L(x + rx, y + h)
+                                .A(rx, ry, 0, 0, 1, x, y + h - ry).L(x, y + ry).A(rx, ry, 0, 0, 1, x + rx, y).Z();
+            } else {
+              this.shape = new SvgShape().M(x, y).L(x + w, y).L(x + w, y + h).L(x, y + h).Z();
+            }
+          } else {
+            this.shape = new SvgShape();
+          }
+        };
+
+        var SvgElemCircle = function(obj, inherits) {
+          SvgElemBasicShape.call(this, obj, inherits);
+          let cx = this.getLength('cx', this.getVWidth(), 0),
+              cy = this.getLength('cy', this.getVHeight(), 0),
+              r = this.getLength('r', this.getViewport(), 0);
+          if (r > 0) {
+            this.shape = new SvgShape().M(cx + r, cy).A(r, r, 0, 0, 1, cx - r, cy).A(r, r, 0, 0, 1, cx + r, cy).Z();
+          } else {
+            this.shape = new SvgShape();
+          }
+        };
+
+        var SvgElemEllipse = function(obj, inherits) {
+          SvgElemBasicShape.call(this, obj, inherits);
+          let cx = this.getLength('cx', this.getVWidth(), 0),
+              cy = this.getLength('cy', this.getVHeight(), 0),
+              rx = this.getLength('rx', this.getVWidth(), 0),
+              ry = this.getLength('ry', this.getVHeight(), 0);
+          if (rx > 0 && ry > 0) {
+            this.shape = new SvgShape().M(cx + rx, cy).A(rx, ry, 0, 0, 1, cx - rx, cy).A(rx, ry, 0, 0, 1, cx + rx, cy).Z();
+          } else {
+            this.shape = new SvgShape();
+          }
+        };
+
+        var SvgElemLine = function(obj, inherits) {
+          SvgElemBasicShape.call(this, obj, inherits);
+          let x1 = this.getLength('x1', this.getVWidth(), 0),
+              y1 = this.getLength('y1', this.getVHeight(), 0),
+              x2 = this.getLength('x2', this.getVWidth(), 0),
+              y2 = this.getLength('y2', this.getVHeight(), 0);
+          this.shape = new SvgShape().M(x1, y1).L(x2, y2);
+        };
+
+        var SvgElemPolyline = function(obj, inherits) {
+          SvgElemBasicShape.call(this, obj, inherits);
+          let points = this.getNumberList('points');
+          this.shape = new SvgShape();
+          for (let i = 0; i < points.length - 1; i += 2) {
+            if (i === 0) {
+              this.shape.M(points[i], points[i+1]);
+            } else {
+              this.shape.L(points[i], points[i+1]);
+            }
+          }
+          if (points.error) {warningCallback('SvgElemPolygon: unexpected string ' + points.error);}
+          if (points.length % 2 === 1) {warningCallback('SvgElemPolyline: uneven number of coordinates');}
+        };
+
+        var SvgElemPolygon = function(obj, inherits) {
+          SvgElemBasicShape.call(this, obj, inherits);
+          let points = this.getNumberList('points');
+          this.shape = new SvgShape();
+          for (let i = 0; i < points.length - 1; i += 2) {
+            if (i === 0) {
+              this.shape.M(points[i], points[i+1]);
+            } else {
+              this.shape.L(points[i], points[i+1]);
+            }
+          }
+          this.shape.Z();
+          if (points.error) {warningCallback('SvgElemPolygon: unexpected string ' + points.error);}
+          if (points.length % 2 === 1) {warningCallback('SvgElemPolygon: uneven number of coordinates');}
+        };
+
+        var SvgElemPath = function(obj, inherits) {
+          SvgElemBasicShape.call(this, obj, inherits);
+          this.shape = new SvgShape().path(this.attr('d'));
+          let pathLength = this.getLength('pathLength', this.getViewport());
+          this.pathLength = pathLength > 0 ? pathLength : undefined;
+          this.dashScale = (this.pathLength !== undefined ? this.shape.totalLength / this.pathLength : 1);
+        };
+
+        var SvgElemMarker = function(obj, inherits) {
+          SvgElemHasChildren.call(this, obj, inherits);
+          let width = this.getLength('markerWidth', this.getParentVWidth(), 3),
+              height = this.getLength('markerHeight', this.getParentVHeight(), 3),
+              viewBox = this.getViewbox('viewBox', [0, 0, width, height]);
+          this.getVWidth = function() {
+            return viewBox[2];
+          };
+          this.getVHeight = function() {
+            return viewBox[3];
+          };
+          this.drawMarker = function(isClip, isMask, posArray, strokeWidth) {
+            doc.save();
+            let orient = this.attr('orient'),
+                units = this.attr('markerUnits'),
+                rotate = (orient === 'auto' ? posArray[2] : (parseFloat(orient) || 0) * Math.PI / 180),
+                scale = (units === 'userSpaceOnUse' ? 1 : strokeWidth);
+            doc.transform(Math.cos(rotate) * scale, Math.sin(rotate) * scale, -Math.sin(rotate) * scale, Math.cos(rotate) * scale, posArray[0], posArray[1]);
+            let refX = this.getLength('refX', this.getVWidth(), 0),
+                refY = this.getLength('refY', this.getVHeight(), 0),
+                aspectRatioMatrix = parseAspectRatio(this.attr('preserveAspectRatio'), width, height, viewBox[2], viewBox[3], 0.5);
+            if (this.get('overflow') === 'hidden') {
+              doc.rect(aspectRatioMatrix[0] * (viewBox[0] + viewBox[2] / 2 - refX) - width / 2, aspectRatioMatrix[3] * (viewBox[1] + viewBox[3] / 2 - refY) - height / 2, width, height).clip();
+            }
+            doc.transform.apply(doc, aspectRatioMatrix);
+            doc.translate(-refX, -refY);
+            let group;
+            if (this.get('opacity') < 1 && !isClip) {
+              group = docBeginGroup(getPageBBox());
+            }
+            this.drawChildren(isClip, isMask);
+            if (group) {
+              docEndGroup(group);
+              doc.fillOpacity(this.get('opacity'));
+              docInsertGroup(group);
+            }
+            doc.restore();
+          };
+        };
+
+        var SvgElemClipPath = function(obj, inherits) {
+          SvgElemHasChildren.call(this, obj, inherits);
+          this.useMask = function(bBox) {
+            let group = docBeginGroup(getPageBBox());
+            doc.save();
+            if (this.attr('clipPathUnits') === 'objectBoundingBox') {
+              doc.transform(bBox[2] - bBox[0], 0, 0, bBox[3] - bBox[1], bBox[0], bBox[1]);
+            }
+            this.clip();
+            this.drawChildren(true, false);
+            doc.restore();
+            docEndGroup(group);
+            docApplyMask(group, true);
+          };
+        };
+
+        var SvgElemMask = function(obj, inherits) {
+          SvgElemHasChildren.call(this, obj, inherits);
+          this.useMask = function(bBox) {
+            let group = docBeginGroup(getPageBBox());
+            doc.save();
+            let x, y, w, h;
+            if (this.attr('maskUnits') === 'userSpaceOnUse') {
+              x = this.getLength('x', this.getVWidth(), -0.1 * (bBox[2] - bBox[0]) + bBox[0]);
+              y = this.getLength('y', this.getVHeight(), -0.1 * (bBox[3] - bBox[1]) + bBox[1]);
+              w = this.getLength('width', this.getVWidth(), 1.2 * (bBox[2] - bBox[0]));
+              h = this.getLength('height', this.getVHeight(), 1.2 * (bBox[3] - bBox[1]));
+            } else {
+              x = this.getLength('x', this.getVWidth(), -0.1) * (bBox[2] - bBox[0]) + bBox[0];
+              y = this.getLength('y', this.getVHeight(), -0.1) * (bBox[3] - bBox[1]) + bBox[1];
+              w = this.getLength('width', this.getVWidth(), 1.2) * (bBox[2] - bBox[0]);
+              h = this.getLength('height', this.getVHeight(), 1.2) * (bBox[3] - bBox[1]);
+            }
+            doc.rect(x, y, w, h).clip();
+            if (this.attr('maskContentUnits') === 'objectBoundingBox') {
+              doc.transform(bBox[2] - bBox[0], 0, 0, bBox[3] - bBox[1], bBox[0], bBox[1]);
+            }
+            this.clip();
+            this.drawChildren(false, true);
+            doc.restore();
+            docEndGroup(group);
+            docApplyMask(group, true);
+          };
+        };
+
+        var SvgElemTextContainer = function(obj, inherits) {
+          SvgElemStylable.call(this, obj, inherits);
+          this.allowedChildren = ['tspan', '#text', '#cdata-section', 'a'];
+          this.isText = true;
+          this.getBoundingShape = function() {
+            let shape = new SvgShape();
+            for (let i = 0; i < this._pos.length; i++) {
+              let pos = this._pos[i];
+              if (!pos.hidden) {
+                let dx0 = pos.ascent * Math.sin(pos.rotate), dy0 = -pos.ascent * Math.cos(pos.rotate),
+                    dx1 = pos.descent * Math.sin(pos.rotate), dy1 = -pos.descent * Math.cos(pos.rotate),
+                    dx2 = pos.width * Math.cos(pos.rotate), dy2 = pos.width * Math.sin(pos.rotate);
+                shape.M(pos.x + dx0, pos.y + dy0).L(pos.x + dx0 + dx2, pos.y + dy0 + dy2)
+                     .M(pos.x + dx1 + dx2, pos.y + dy1 + dy2).L(pos.x + dx1, pos.y + dy1);
+              }
+            }
+            return shape;
+          };
+          this.drawTextInDocument = function(isClip, isMask) {
+            if (this.link && !isClip && !isMask) {this.addLink();}
+            if (this.get('text-decoration') === 'underline') {
+              this.decorate(0.05 * this._font.size, -0.075 * this._font.size, isClip, isMask);
+            }
+            if (this.get('text-decoration') === 'overline') {
+              this.decorate(0.05 * this._font.size, getAscent(this._font.font, this._font.size) + 0.075 * this._font.size, isClip, isMask);
+            }
+            let fill = this.getFill(isClip, isMask),
+                stroke = this.getStroke(isClip, isMask),
+                strokeWidth = this.get('stroke-width');
+            if (this._font.fauxBold) {
+              if (!stroke) {
+                stroke = fill;
+                strokeWidth = this._font.size * 0.03;
+              } else {
+                strokeWidth += this._font.size * 0.03;
+              }
+            }
+            let children = this.getChildren();
+            for (let i = 0; i < children.length; i++) {
+              let childElem = children[i];
+              switch(childElem.name) {
+                case 'tspan': case 'textPath': case 'a':
+                  if (childElem.get('display') !== 'none') {
+                    childElem.drawTextInDocument(isClip, isMask);
+                  }
+                  break;
+                case '#text': case '#cdata-section':
+                  if (this.get('visibility') === 'hidden') {continue;}
+                  if (fill || stroke || isClip) {
+                    if (fill) {
+                      docFillColor(fill);
+                    }
+                    if (stroke && strokeWidth) {
+                      docStrokeColor(stroke);
+                      doc.lineWidth(strokeWidth)
+                         .miterLimit(this.get('stroke-miterlimit'))
+                         .lineJoin(this.get('stroke-linejoin'))
+                         .lineCap(this.get('stroke-linecap'))
+                         .dash(this.get('stroke-dasharray'), {phase:this.get('stroke-dashoffset')});
+                    }
+                    docBeginText(this._font.font, this._font.size);
+                    docSetTextMode(!!fill, !!stroke);
+                    for (let j = 0, pos = childElem._pos; j < pos.length; j++) {
+                      if (!pos[j].hidden && isNotEqual(pos[j].width, 0)) {
+                        let cos = Math.cos(pos[j].rotate), sin = Math.sin(pos[j].rotate), skew = (this._font.fauxItalic ? -0.25 : 0);
+                        docSetTextMatrix(cos * pos[j].scale, sin * pos[j].scale, cos * skew - sin, sin * skew + cos, pos[j].x, pos[j].y);
+                        docWriteGlyph(pos[j].glyph);
+                      }
+                    }
+                    docEndText();
+                  }
+                  break;
+              }
+            }
+            if (this.get('text-decoration') === 'line-through') {
+              this.decorate(0.05 * this._font.size, 0.5 * (getAscent(this._font.font, this._font.size) + getDescent(this._font.font, this._font.size)), isClip, isMask);
+            }
+          };
+          this.decorate = function(lineWidth, linePosition, isClip, isMask) {
+            let fill = this.getFill(isClip, isMask),
+                stroke = this.getStroke(isClip, isMask);
+            if (fill) {
+              docFillColor(fill);
+            }
+            if (stroke) {
+              docStrokeColor(stroke);
+              doc.lineWidth(this.get('stroke-width'))
+                 .miterLimit(this.get('stroke-miterlimit'))
+                 .lineJoin(this.get('stroke-linejoin'))
+                 .lineCap(this.get('stroke-linecap'))
+                 .dash(this.get('stroke-dasharray'), {phase:this.get('stroke-dashoffset')});
+            }
+            for (let j = 0, pos = this._pos; j < pos.length; j++) {
+              if (!pos[j].hidden && isNotEqual(pos[j].width, 0)) {
+                let dx0 = (linePosition + lineWidth / 2) * Math.sin(pos[j].rotate),
+                    dy0 = -(linePosition + lineWidth / 2) * Math.cos(pos[j].rotate),
+                    dx1 = (linePosition - lineWidth / 2) * Math.sin(pos[j].rotate),
+                    dy1 = -(linePosition - lineWidth / 2) * Math.cos(pos[j].rotate),
+                    dx2 = pos[j].width * Math.cos(pos[j].rotate),
+                    dy2 = pos[j].width * Math.sin(pos[j].rotate);
+                new SvgShape().M(pos[j].x + dx0, pos[j].y + dy0)
+                              .L(pos[j].x + dx0 + dx2, pos[j].y + dy0 + dy2)
+                              .L(pos[j].x + dx1 + dx2, pos[j].y + dy1 + dy2)
+                              .L(pos[j].x + dx1, pos[j].y + dy1).Z()
+                              .insertInDocument();
+                if (fill && stroke) {
+                  doc.fillAndStroke();
+                } else if (fill) {
+                  doc.fill();
+                } else if (stroke) {
+                  doc.stroke();
+                }
+              }
+            }
+          };
+        };
+
+        var SvgElemTextNode = function(obj, inherits) {
+          this.name = obj.nodeName;
+          this.textContent = obj.nodeValue;
+        };
+
+        var SvgElemTspan = function(obj, inherits) {
+          SvgElemTextContainer.call(this, obj, inherits);
+        };
+
+        var SvgElemTextPath = function(obj, inherits) {
+          SvgElemTextContainer.call(this, obj, inherits);
+          let temp;
+          if ((temp = this.attr('path')) && temp.trim() !== '') {
+            let pathLength = this.getLength('pathLength', this.getViewport());
+            this.pathObject = new SvgShape().path(temp);
+            this.pathLength = pathLength > 0 ? pathLength : this.pathObject.totalLength;
+            this.pathScale = this.pathObject.totalLength / this.pathLength;
+          } else if ((temp = this.getUrl('href') || this.getUrl('xlink:href')) && temp.nodeName === 'path') {
+            let pathElem = new SvgElemPath(temp, this);
+            this.pathObject = pathElem.shape.clone().transform(pathElem.get('transform'));
+            this.pathLength = this.chooseValue(pathElem.pathLength, this.pathObject.totalLength);
+            this.pathScale = this.pathObject.totalLength / this.pathLength;
+          }
+        };
+
+        var SvgElemText = function(obj, inherits) {
+          SvgElemTextContainer.call(this, obj, inherits);
+          this.allowedChildren = ['textPath', 'tspan', '#text', '#cdata-section', 'a'];
+          (function (textParentElem) {
+            let processedText = '', remainingText = obj.textContent, textPaths = [], currentChunk = [], currentAnchor, currentDirection, currentX = 0, currentY = 0;
+            function doAnchoring() {
+              if (currentChunk.length) {
+                let last = currentChunk[currentChunk.length - 1];
+                let first = currentChunk[0];
+                let width = last.x + last.width - first.x;
+                let anchordx = {'startltr': 0, 'middleltr': 0.5, 'endltr': 1, 'startrtl': 1, 'middlertl': 0.5, 'endrtl': 0}[currentAnchor + currentDirection] * width || 0;
+                for (let i = 0; i < currentChunk.length; i++) {
+                  currentChunk[i].x -= anchordx;
+                }
+              }
+              currentChunk = [];
+            }
+            function adjustLength(pos, length, spacingAndGlyphs) {
+              let firstChar = pos[0], lastChar = pos[pos.length - 1],
+                  startX = firstChar.x, endX = lastChar.x + lastChar.width;
+              if (spacingAndGlyphs) {
+                let textScale = length / (endX - startX);
+                if (textScale > 0 && textScale < Infinity) {
+                  for (let j = 0; j < pos.length; j++) {
+                    pos[j].x = startX + textScale * (pos[j].x - startX);
+                    pos[j].scale *= textScale;
+                    pos[j].width *= textScale;
+                  }
+                }
+              } else {
+                if (pos.length >= 2) {
+                  let spaceDiff = (length - (endX - startX)) / (pos.length - 1);
+                  for (let j = 0; j < pos.length; j++) {
+                    pos[j].x += j * spaceDiff;
+                  }
+                }
+              }
+              currentX += length - (endX - startX);
+            }
+            function recursive(currentElem, parentElem) {
+              currentElem._x = combineArrays(currentElem.getLengthList('x', currentElem.getVWidth()), (parentElem ? parentElem._x.slice(parentElem._pos.length) : []));
+              currentElem._y = combineArrays(currentElem.getLengthList('y', currentElem.getVHeight()), (parentElem ? parentElem._y.slice(parentElem._pos.length) : []));
+              currentElem._dx = combineArrays(currentElem.getLengthList('dx', currentElem.getVWidth()), (parentElem ? parentElem._dx.slice(parentElem._pos.length) : []));
+              currentElem._dy = combineArrays(currentElem.getLengthList('dy', currentElem.getVHeight()), (parentElem ? parentElem._dy.slice(parentElem._pos.length) : []));
+              currentElem._rot = combineArrays(currentElem.getNumberList('rotate'), (parentElem ? parentElem._rot.slice(parentElem._pos.length) : []));
+              currentElem._defRot = currentElem.chooseValue(currentElem._rot[currentElem._rot.length - 1], parentElem && parentElem._defRot, 0);
+              if (currentElem.name === 'textPath') {currentElem._y = [];}
+              let fontOptions = {fauxItalic: false, fauxBold: false},
+                  fontNameorLink = fontCallback(currentElem.get('font-family'), currentElem.get('font-weight') === 'bold', currentElem.get('font-style') === 'italic', fontOptions);
+              try {
+                doc.font(fontNameorLink);
+              } catch(e) {
+                warningCallback('SVGElemText: failed to open font "' + fontNameorLink + '" in PDFKit');
+              }
+              currentElem._pos = [];
+              currentElem._index = 0;
+              currentElem._font = {font: doc._font, size: currentElem.get('font-size'), fauxItalic: fontOptions.fauxItalic, fauxBold: fontOptions.fauxBold};
+              let textLength = currentElem.getLength('textLength', currentElem.getVWidth(), undefined),
+                  spacingAndGlyphs = currentElem.attr('lengthAdjust') === 'spacingAndGlyphs',
+                  wordSpacing = currentElem.get('word-spacing'),
+                  letterSpacing = currentElem.get('letter-spacing'),
+                  textAnchor = currentElem.get('text-anchor'),
+                  textDirection = currentElem.get('direction'),
+                  baseline = getBaseline(currentElem._font.font, currentElem._font.size, currentElem.get('alignment-baseline') || currentElem.get('dominant-baseline'), currentElem.get('baseline-shift'));
+              if (currentElem.name === 'textPath') {
+                doAnchoring();
+                currentX = currentY = 0;
+              }
+              let children = currentElem.getChildren();
+              for (let i = 0; i < children.length; i++) {
+                let childElem = children[i];
+                switch(childElem.name) {
+                  case 'tspan': case 'textPath': case 'a':
+                    recursive(childElem, currentElem);
+                    break;
+                  case '#text': case '#cdata-section':
+                    let rawText = childElem.textContent, renderedText = rawText, words;
+                    childElem._font = currentElem._font;
+                    childElem._pos = [];
+                    remainingText = remainingText.substring(rawText.length);
+                    if (currentElem.get('xml:space') === 'preserve') {
+                      renderedText = renderedText.replace(/[\s]/g, ' ');
+                    } else {
+                      renderedText = renderedText.replace(/[\s]+/g, ' ');
+                      if (processedText.match(/[\s]$|^$/)) {renderedText = renderedText.replace(/^[\s]/, '');}
+                      if (remainingText.match(/^[\s]*$/)) {renderedText = renderedText.replace(/[\s]$/, '');}
+                    }
+                    processedText += rawText;
+                    if (wordSpacing === 0) {
+                      words = [renderedText];
+                    } else {
+                      words = renderedText.split(/(\s)/);
+                    }
+                    for (let w = 0; w < words.length; w++) {
+                      let pos = getTextPos(currentElem._font.font, currentElem._font.size, words[w]);
+                      for (let j = 0; j < pos.length; j++) {
+                        let index = currentElem._index,
+                            xAttr = currentElem._x[index],
+                            yAttr = currentElem._y[index],
+                            dxAttr = currentElem._dx[index],
+                            dyAttr = currentElem._dy[index],
+                            rotAttr = currentElem._rot[index],
+                            continuous = !(w === 0 && j === 0);
+                        if (xAttr !== undefined) {continuous = false; doAnchoring(); currentX = xAttr;}
+                        if (yAttr !== undefined) {continuous = false; doAnchoring(); currentY = yAttr;}
+                        if (dxAttr !== undefined) {continuous = false; currentX += dxAttr;}
+                        if (dyAttr !== undefined) {continuous = false; currentY += dyAttr;}
+                        if (rotAttr !== undefined || currentElem._defRot !== 0) {continuous = false;}
+                        let position = {
+                          glyph: pos[j].glyph,
+                          rotate: (Math.PI / 180) * currentElem.chooseValue(rotAttr, currentElem._defRot),
+                          x: currentX + pos[j].xOffset,
+                          y: currentY + baseline + pos[j].yOffset,
+                          width: pos[j].width,
+                          ascent: getAscent(currentElem._font.font, currentElem._font.size),
+                          descent: getDescent(currentElem._font.font, currentElem._font.size),
+                          scale: 1,
+                          hidden: false,
+                          continuous: continuous
+                        };
+                        currentChunk.push(position);
+                        childElem._pos.push(position);
+                        currentElem._pos.push(position);
+                        currentElem._index += pos[j].unicode.length;
+                        if (currentChunk.length === 1) {
+                          currentAnchor = textAnchor;
+                          currentDirection = textDirection;
+                        }
+                        currentX += pos[j].xAdvance + letterSpacing;
+                        currentY += pos[j].yAdvance;
+                      }
+                      if (words[w] === ' ') {
+                        currentX += wordSpacing;
+                      }
+                    }
+                    break;
+                  default:
+                    remainingText = remainingText.substring(childElem.textContent.length);
+                }
+              }
+              if (textLength && currentElem._pos.length) {
+                adjustLength(currentElem._pos, textLength, spacingAndGlyphs);
+              }
+              if (currentElem.name === 'textPath' || currentElem.name === 'text') {
+                doAnchoring();
+              }
+              if (currentElem.name === 'textPath') {
+                textPaths.push(currentElem);
+                let pathObject = currentElem.pathObject;
+                if (pathObject) {
+                  currentX = pathObject.endPoint[0]; currentY = pathObject.endPoint[1];
+                }
+              }
+              if (parentElem) {
+                parentElem._pos = parentElem._pos.concat(currentElem._pos);
+                parentElem._index += currentElem._index;
+              }
+            }
+            function textOnPath(currentElem) {
+              let pathObject = currentElem.pathObject,
+                  pathLength = currentElem.pathLength,
+                  pathScale = currentElem.pathScale;
+              if (pathObject) {
+                let textOffset = currentElem.getLength('startOffset', pathLength, 0);
+                for (let j = 0; j < currentElem._pos.length; j++) {
+                  let charMidX = textOffset + currentElem._pos[j].x + 0.5 * currentElem._pos[j].width;
+                  if (charMidX > pathLength || charMidX < 0) {
+                    currentElem._pos[j].hidden = true;
+                  } else {
+                    let pointOnPath = pathObject.getPointAtLength(charMidX * pathScale);
+                    if (isNotEqual(pathScale, 1)) {
+                      currentElem._pos[j].scale *= pathScale;
+                      currentElem._pos[j].width *= pathScale;
+                    }
+                    currentElem._pos[j].x = pointOnPath[0] - 0.5 * currentElem._pos[j].width * Math.cos(pointOnPath[2]) - currentElem._pos[j].y * Math.sin(pointOnPath[2]);
+                    currentElem._pos[j].y = pointOnPath[1] - 0.5 * currentElem._pos[j].width * Math.sin(pointOnPath[2]) + currentElem._pos[j].y * Math.cos(pointOnPath[2]);
+                    currentElem._pos[j].rotate = pointOnPath[2] + currentElem._pos[j].rotate;
+                    currentElem._pos[j].continuous = false;
+                  }
+                }
+              } else {
+                for (let j = 0; j < currentElem._pos.length; j++) {
+                  currentElem._pos[j].hidden = true;
+                }
+              }
+            }
+            recursive(textParentElem, null);
+            for (let i = 0; i < textPaths.length; i++) {
+              textOnPath(textPaths[i]);
+            }
+          })(this);
+          this.getTransformation = function() {
+            return this.get('transform');
+          };
+          this.drawInDocument = function(isClip, isMask) {
+            doc.save();
+            this.transform();
+            this.clip();
+            let masked = this.mask(), group;
+            if (masked) {
+              group = docBeginGroup(getPageBBox());
+            }
+            this.drawTextInDocument(isClip, isMask);
+            if (group) {
+              docEndGroup(group);
+              docInsertGroup(group);
+            }
+            doc.restore();
+          };
+        };
+
+        options = options || {};
+        var pxToPt = options.assumePt ? 1 : (72/96), // 1px = 72/96pt, but only if assumePt is false
+            viewportWidth = (options.width || doc.page.width) / pxToPt,
+            viewportHeight = (options.height || doc.page.height) / pxToPt,
+            preserveAspectRatio = options.preserveAspectRatio || null, // default to null so that the attr can override if not passed
+            useCSS = options.useCSS && typeof SVGElement !== 'undefined' && svg instanceof SVGElement && typeof getComputedStyle === 'function',
+            warningCallback = options.warningCallback,
+            fontCallback = options.fontCallback,
+            imageCallback = options.imageCallback,
+            colorCallback = options.colorCallback,
+            documentCallback = options.documentCallback,
+            precision = Math.ceil(Math.max(1, options.precision)) || 3,
+            groupStack = [],
+            documentCache = {},
+            links = [],
+            styleRules = [];
+
+        if (typeof warningCallback !== 'function') {
+          warningCallback = function(str) {
+            if (typeof console !== undefined && typeof console.warn === 'function') {console.warn(str);}
+          };
+        }
+        if (typeof fontCallback !== 'function') {
+          fontCallback = function(family, bold, italic, fontOptions) {
+            // Check if the font is already registered in the document
+            if (bold && italic) {
+              if (doc._registeredFonts.hasOwnProperty(family + '-BoldItalic')) {
+                return family + '-BoldItalic';
+              } else if (doc._registeredFonts.hasOwnProperty(family + '-Italic')) {
+                fontOptions.fauxBold = true;
+                return family + '-Italic';
+              } else if (doc._registeredFonts.hasOwnProperty(family + '-Bold')) {
+                fontOptions.fauxItalic = true;
+                return family + '-Bold';
+              } else if (doc._registeredFonts.hasOwnProperty(family)) {
+                fontOptions.fauxBold = true;
+                fontOptions.fauxItalic = true;
+                return family;
+              }
+            }
+            if (bold && !italic) {
+              if (doc._registeredFonts.hasOwnProperty(family + '-Bold')) {
+                return family + '-Bold';
+              } else if (doc._registeredFonts.hasOwnProperty(family)) {
+                fontOptions.fauxBold = true;
+                return family;
+              }
+            }
+            if (!bold && italic) {
+              if (doc._registeredFonts.hasOwnProperty(family + '-Italic')) {
+                return family + '-Italic';
+              } else if (doc._registeredFonts.hasOwnProperty(family)) {
+                fontOptions.fauxItalic = true;
+                return family;
+              }
+            }
+            if (!bold && !italic) {
+              if (doc._registeredFonts.hasOwnProperty(family)) {
+                return family;
+              }
+            }
+            // Use standard fonts as fallback
+            if (family.match(/(?:^|,)\s*serif\s*$/)) {
+              if (bold && italic) {return 'Times-BoldItalic';}
+              if (bold && !italic) {return 'Times-Bold';}
+              if (!bold && italic) {return 'Times-Italic';}
+              if (!bold && !italic) {return 'Times-Roman';}
+            } else if (family.match(/(?:^|,)\s*monospace\s*$/)) {
+              if (bold && italic) {return 'Courier-BoldOblique';}
+              if (bold && !italic) {return 'Courier-Bold';}
+              if (!bold && italic) {return 'Courier-Oblique';}
+              if (!bold && !italic) {return 'Courier';}
+            } else if (family.match(/(?:^|,)\s*sans-serif\s*$/) || true) {
+              if (bold && italic) {return 'Helvetica-BoldOblique';}
+              if (bold && !italic) {return 'Helvetica-Bold';}
+              if (!bold && italic) {return 'Helvetica-Oblique';}
+              if (!bold && !italic) {return 'Helvetica';}
+            }
+          };
+        }
+        if (typeof imageCallback !== 'function') {
+          imageCallback = function(link) {
+            return link.replace(/\s+/g, '');
+          };
+        }
+        if (typeof colorCallback !== 'function') {
+          colorCallback = null;
+        } else {
+          for (let color in DefaultColors) {
+            let newColor = colorCallback(DefaultColors[color]);
+            DefaultColors[color][0] = newColor[0];
+            DefaultColors[color][1] = newColor[1];
+          }
+        }
+        if (typeof documentCallback !== 'function') {
+          documentCallback = null;
+        }
+
+        if (typeof svg === 'string') {svg = parseXml(svg);}
+        if (svg) {
+          let styles = svg.getElementsByTagName('style');
+          for (let i = 0; i < styles.length; i++) {
+            styleRules = styleRules.concat(parseStyleSheet(styles[i].textContent));
+          }
+          let elem = createSVGElement(svg, null);
+          if (typeof elem.drawInDocument === 'function') {
+            if (options.useCSS && !useCSS) {
+              warningCallback('SVGtoPDF: useCSS option can only be used for SVG *elements* in compatible browsers');
+            }
+            let savedFillColor = doc._fillColor;
+            doc.save().translate(x || 0, y || 0).scale(pxToPt);
+            elem.drawInDocument();
+            for (let i = 0; i < links.length; i++) {
+              doc.page.annotations.push(links[i]);
+            }
+            doc.restore();
+            doc._fillColor = savedFillColor;
+          } else {
+            warningCallback('SVGtoPDF: this element can\'t be rendered directly: ' + svg.nodeName);
+          }
+        } else {
+          warningCallback('SVGtoPDF: the input does not look like a valid SVG');
+        }
+
+    };
+
+    if ( module && 'object' !== 'undefined') {
+      module.exports = SVGtoPDF;
+    }
+    });
+
     let pdfBlob;
-    const svgToPng = (svgURL) => __awaiter(void 0, void 0, void 0, function* () {
+    const getPNGData = (pngURL) => __awaiter(void 0, void 0, void 0, function* () {
         const imageElement = document.createElement("img");
         imageElement.style.display = "none";
         document.body.appendChild(imageElement);
-        imageElement.src = svgURL;
+        imageElement.src = pngURL;
         // wait until image loaded
         yield new Promise((resolve) => {
             imageElement.onload = () => resolve();
@@ -26021,29 +26041,58 @@ Please pipe the document into a Node stream.\
         imageElement.remove();
         return data;
     });
-    const generatePDF = (svgURLs, name) => __awaiter(void 0, void 0, void 0, function* () {
+    const getImgType = () => {
+        try {
+            const imgE = document.querySelector("img[id^=score_]");
+            const { pathname } = new URL(imgE.src);
+            const imgtype = pathname.match(/\.(\w+)$/)[1];
+            return imgtype;
+        }
+        catch (_) {
+            return null;
+        }
+    };
+    const generatePDF = (pageURLs, name) => __awaiter(void 0, void 0, void 0, function* () {
         if (pdfBlob) {
             return FileSaver(pdfBlob, `${name}.pdf`);
         }
-        const cachedImg = document.querySelector("img[id^=score_]");
-        const { naturalWidth: width, naturalHeight: height } = cachedImg;
-        const imgDataList = yield Promise.all(svgURLs.map(svgToPng));
         // @ts-ignore
-        const pdf = new PDFDocument({
-            // compress: true,
-            size: [width, height],
-            autoFirstPage: false,
-            margin: 0,
-            layout: "portrait",
-        });
-        imgDataList.forEach((data) => {
-            pdf.addPage();
-            pdf.image(data, {
-                width,
-                height,
-            });
-        });
-        // TODO: webworker
+        let pdf;
+        switch (getImgType()) {
+            case 'svg':
+                pdf = new PDFDocument({
+                    autoFirstPage: false,
+                    margin: 0,
+                    layout: "portrait",
+                });
+                pageURLs.forEach(pageURL => {
+                    let xhr = new XMLHttpRequest();
+                    xhr.open("GET", pageURL, false);
+                    xhr.overrideMimeType("image/svg+xml");
+                    xhr.send("");
+                    const svg = xhr.responseXML.documentElement;
+                    source(pdf, svg, 0, 0, { preserveAspectRatio: "none" });
+                });
+                break;
+            case 'png':
+                const cachedImg = document.querySelector("img[id^=score_]");
+                const { naturalWidth: width, naturalHeight: height } = cachedImg;
+                pdf = new PDFDocument({
+                    autoFirstPage: false,
+                    margin: 0,
+                    size: [width, height],
+                    layout: "portrait",
+                });
+                const imgDataList = yield Promise.all(pageURLs.map(getPNGData));
+                imgDataList.forEach((scoreImg) => {
+                    pdf.addPage();
+                    pdf.image(scoreImg, {
+                        width,
+                        height,
+                    });
+                });
+                break;
+        }
         // @ts-ignore
         return pdf.getBlob().then((blob) => {
             pdfBlob = blob;
@@ -26078,6 +26127,7 @@ Please pipe the document into a Node stream.\
         const scorePlayer = window.UGAPP.store.jmuse_settings.score_player;
         const { id } = scorePlayer.json;
         const baseURL = scorePlayer.urls.image_path;
+        console.log(scorePlayer.urls);
         // const msczURL = `https://musescore.com/static/musescore/scoredata/score/${getIndexPath(id)}/${id}/score_${vid}_${scoreHexId}.mscz`
         // https://github.com/Xmader/cloudflare-worker-musescore-mscz
         const msczURL = `https://musescore-mscz.99.workers.dev/${id}`;
@@ -26086,8 +26136,9 @@ Please pipe the document into a Node stream.\
         const btnsDiv = document.querySelector(".score-right .buttons-wrapper") || document.querySelectorAll("aside section > div")[3];
         const downloadBtn = btnsDiv.querySelector("button, .button");
         downloadBtn.onclick = null;
+        const imgType = getImgType() || "svg";
         const svgURLs = Array.from({ length: getPagesNumber(scorePlayer) }).fill(null).map((_, i) => {
-            return baseURL + `score_${i}.svg`;
+            return baseURL + `score_${i}.${imgType}`;
         });
         const downloadURLs = {
             "Musescore": msczURL,
@@ -26104,10 +26155,7 @@ Please pipe the document into a Node stream.\
             else {
                 btn.dataset.target = "";
             }
-            const textNode = [...btn.childNodes].find((x) => {
-                return x.nodeName.toLowerCase() == "#text"
-                    && x.textContent.includes("Download");
-            });
+            const textNode = [...btn.childNodes].find((x) => x.textContent.includes("Download"));
             textNode.textContent = `Download ${name}`;
             return {
                 btn,
