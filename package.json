@@ -1,11 +1,11 @@
 {
   "name": "musescore-downloader",
   "version": "0.3.4",
-  "description": "download sheet music from musescore.com for free, no login or Musescore Pro required | 免登录、免 Musescore Pro，免费下载 musescore.com 上的曲谱",
+  "description": "download music sheets from musescore.com for free, no login or Musescore Pro required",
   "main": "dist/main.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Xmader/musescore-downloader.git"
+    "url": "git+https://github.com/generalbrus/musescore-downloader.git"
   },
   "author": "Xmader",
   "license": "MIT",
